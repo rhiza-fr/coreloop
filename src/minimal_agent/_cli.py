@@ -13,6 +13,7 @@ import typer
 from ._agent import Agent
 from ._builtin_tools import make_tools
 from ._tool import ToolInfo
+from ._web_tools import make_web_tools
 from ._types import Message
 
 app = typer.Typer(
@@ -22,6 +23,8 @@ app = typer.Typer(
 )
 
 _BUILTIN_TOOL_NAMES = {"read", "ls", "edit"}
+_WEB_TOOL_NAMES = {"web_search", "web_fetch"}
+_ALL_TOOL_NAMES = _BUILTIN_TOOL_NAMES | _WEB_TOOL_NAMES
 
 
 def _version_callback(value: bool) -> None:
@@ -32,21 +35,30 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-def _build_tools(tools_opt: str | None, root: str | None) -> list[ToolInfo] | None:
-    """Return a filtered list of built-in tools, or None if no tools requested."""
+def _build_tools(
+    tools_opt: str | None, root: str | None, searxng_url: str | None = None
+) -> list[ToolInfo] | None:
+    """Return a filtered list of tools, or None if no tools requested."""
     if not tools_opt:
         return None
     names = {n.strip().lower() for n in tools_opt.split(",") if n.strip()}
-    unknown = names - _BUILTIN_TOOL_NAMES
+    unknown = names - _ALL_TOOL_NAMES
     if unknown:
         typer.echo(
             f"Unknown tools: {', '.join(sorted(unknown))}. "
-            f"Available: {', '.join(sorted(_BUILTIN_TOOL_NAMES))}",
+            f"Available: {', '.join(sorted(_ALL_TOOL_NAMES))}",
             err=True,
         )
         raise typer.Exit(1)
-    all_tools = make_tools(allowed_root=root)
-    return [t for t in all_tools if t.name in names]
+    result: list[ToolInfo] = []
+    if names & _BUILTIN_TOOL_NAMES:
+        fs_tools = make_tools(allowed_root=root)
+        result.extend(t for t in fs_tools if t.name in names)
+    if names & _WEB_TOOL_NAMES:
+        url = searxng_url or os.environ.get("SEARXNG_URL")
+        web_tools = make_web_tools(searxng_url=url)
+        result.extend(t for t in web_tools if t.name in names)
+    return result
 
 
 @app.callback(invoke_without_command=True)
@@ -68,6 +80,11 @@ def main(
     root: Optional[str] = typer.Option(
         None, "--root", "-r",
         help="Allowed root directory for file tools (default: cwd)",
+    ),
+    searxng_url: Optional[str] = typer.Option(
+        None, "--searxng-url",
+        help="SearXNG base URL for web tools (overrides SEARXNG_URL env var)",
+        envvar="SEARXNG_URL",
     ),
     timeout: float = typer.Option(
         60.0, "--timeout", "-t", help="Timeout for LLM and tool calls"
@@ -102,7 +119,7 @@ def main(
     extra_body: dict | None = json.loads(extra) if extra else None
     extra_body = (extra_body or {}) | {"reasoning_effort": "medium" if think else "none"}
 
-    tools = _build_tools(tools_opt, root)
+    tools = _build_tools(tools_opt, root, searxng_url)
 
     agent = Agent(
         model=model,
@@ -118,7 +135,7 @@ def main(
     if prompt is not None:
         asyncio.run(_once(agent, prompt, json_out=json_out))
     else:
-        asyncio.run(_repl(agent, model, provider, root, tools_opt,
+        asyncio.run(_repl(agent, model, provider, root, tools_opt, searxng_url,
                           system, timeout, max_turns, max_messages, extra_body))
 
 
@@ -144,6 +161,7 @@ async def _repl(
     provider: str,
     root: str | None,
     tools_opt: str | None,
+    searxng_url: str | None,
     system: str | None,
     timeout: float,
     max_turns: int,
@@ -183,7 +201,7 @@ async def _repl(
             new_root = user_input[6:].strip()
             if new_root:
                 state["root"] = new_root
-                new_tools = _build_tools(tools_opt, new_root)
+                new_tools = _build_tools(tools_opt, new_root, searxng_url)
                 state["agent"] = Agent(
                     model=model,
                     provider=provider,
