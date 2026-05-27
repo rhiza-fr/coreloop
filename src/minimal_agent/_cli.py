@@ -22,7 +22,7 @@ app = typer.Typer(
     invoke_without_command=True,
 )
 
-_BUILTIN_TOOL_NAMES = {"read", "ls", "edit"}
+_BUILTIN_TOOL_NAMES = {"read", "ls", "edit", "search"}
 _WEB_TOOL_NAMES = {"web_search", "web_fetch"}
 _ALL_TOOL_NAMES = _BUILTIN_TOOL_NAMES | _WEB_TOOL_NAMES
 
@@ -74,7 +74,7 @@ def main(
     ),
     tools_opt: Optional[str] = typer.Option(
         None, "--tools",
-        help="Comma-separated built-in tools to enable: read,edit,ls",
+        help="Comma-separated built-in tools to enable: read,edit,ls,search",
         metavar="TOOLS",
     ),
     root: Optional[str] = typer.Option(

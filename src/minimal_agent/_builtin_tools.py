@@ -5,6 +5,7 @@ All tools enforce a safe root directory to prevent path traversal.
 
 from __future__ import annotations
 
+import asyncio
 import itertools
 import os
 from pathlib import Path
@@ -228,6 +229,72 @@ def make_tools(allowed_root: str | None = None) -> list[ToolInfo]:
 
         return f"Replaced 1 occurrence in {path!r}"
 
+    # ── search ────────────────────────────────────────────────
+
+    async def search(
+        pattern: str,
+        path: str = ".",
+        type: str | None = None,
+        after_context: int | None = None,
+        files_with_matches: bool = False,
+    ) -> str:
+        """Search for a regex pattern in files using ripgrep (rg).
+
+        Parameters
+        ----------
+        pattern :
+            Regular expression to search for.
+        path :
+            Directory or file to search in (relative to root).
+        type :
+            Restrict search to files of this type (e.g. ``py``, ``js``, ``ts``).
+        after_context :
+            Number of lines to show after each match.
+        files_with_matches :
+            If true, only print paths of files that contain a match.
+        """
+        try:
+            safe = _resolve_safe_strict(path, root)
+        except ValueError as exc:
+            return f"Error: {exc}"
+
+        cmd = ["rg", "-e", pattern]
+        if type:
+            cmd += ["--type", type]
+        if after_context is not None:
+            cmd += [f"--after-context={after_context}"]
+        if files_with_matches:
+            cmd.append("--files-with-matches")
+        cmd.append(safe)
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+        except FileNotFoundError:
+            return "Error: 'rg' (ripgrep) not found on PATH"
+        except OSError as exc:
+            return f"Error: {exc}"
+
+        if proc.returncode == 1:
+            return "(no matches)"
+        if proc.returncode not in (0, 1):
+            err = stderr.decode("utf-8", errors="replace").strip()
+            return f"Error: rg exited {proc.returncode}: {err}"
+
+        output = stdout.decode("utf-8", errors="replace")
+        _MAX_SEARCH_CHARS = 20_000
+        if len(output) > _MAX_SEARCH_CHARS:
+            output = output[:_MAX_SEARCH_CHARS]
+            last_newline = output.rfind("\n")
+            if last_newline > 0:
+                output = output[: last_newline + 1]
+            output += f"\n... (truncated — {len(stdout)} bytes total)"
+        return output
+
     # ── Build ToolInfo list ───────────────────────────────────
 
     # We construct ToolInfo by hand instead of using @tool so that the
@@ -248,6 +315,7 @@ def make_tools(allowed_root: str | None = None) -> list[ToolInfo]:
         _info(read),
         _info(ls),
         _info(edit),
+        _info(search),
     ]
 
 
