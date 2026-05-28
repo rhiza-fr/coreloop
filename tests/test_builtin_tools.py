@@ -47,7 +47,7 @@ async def test_read_with_offset_and_limit(sandbox):
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
     result = await read.fn("hello.txt", offset=2, limit=2)
-    assert result == "line2\nline3\n"
+    assert result == "line2\nline3\n\n[Truncated: showing lines 2-3. Use offset/limit to read more.]"
 
 
 @pytest.mark.asyncio
