@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 import types
 from dataclasses import dataclass
-from typing import Any, Callable, Coroutine
+from typing import Any, Callable, Coroutine, overload
 
 
 @dataclass
@@ -85,13 +85,32 @@ def _pytype_to_jsonschema(tp: type) -> dict[str, Any]:
     return {"type": "string"}
 
 
+@overload
+def tool(
+    fn: Callable[..., Coroutine[Any, Any, str]],
+    *,
+    name: str | None = None,
+    description: str | None = None,
+    allow_override: bool = False,
+) -> ToolInfo: ...
+
+
+@overload
+def tool(
+    *,
+    name: str | None = None,
+    description: str | None = None,
+    allow_override: bool = False,
+) -> Callable[[Callable[..., Coroutine[Any, Any, str]]], ToolInfo]: ...
+
+
 def tool(
     fn: Callable[..., Coroutine[Any, Any, str]] | None = None,
     *,
     name: str | None = None,
     description: str | None = None,
     allow_override: bool = False,
-) -> ToolInfo | Callable[[Callable], ToolInfo]:
+) -> ToolInfo | Callable[[Callable[..., Coroutine[Any, Any, str]]], ToolInfo]:
     """Decorator to register an async function as a tool.
 
     Usage::
@@ -107,8 +126,8 @@ def tool(
     Raises ``ValueError`` if a tool with the same name is already registered,
     unless ``allow_override=True`` is passed.
     """
-    def register(f: Callable) -> ToolInfo:
-        tool_name = name or f.__name__
+    def register(f: Callable[..., Coroutine[Any, Any, str]]) -> ToolInfo:
+        tool_name = name or getattr(f, '__name__', '')
         if tool_name in _TOOL_REGISTRY and not allow_override:
             raise ValueError(
                 f"Tool {tool_name!r} is already registered. "

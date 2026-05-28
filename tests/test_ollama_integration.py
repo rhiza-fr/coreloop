@@ -20,7 +20,7 @@ import pytest
 from minimal_agent import Agent, Message, make_tools
 
 OLLAMA_HOST = "http://192.168.0.101:11434/v1"
-MODEL = "granite4.1:8b"
+MODEL = "qwen3.5:9b"
 TIMEOUT = 120.0
 
 
@@ -35,6 +35,7 @@ def _ollama_available() -> bool:
 pytestmark = [
     pytest.mark.skipif(not _ollama_available(), reason="Ollama not reachable"),
     pytest.mark.asyncio,
+    pytest.mark.slow,
 ]
 
 

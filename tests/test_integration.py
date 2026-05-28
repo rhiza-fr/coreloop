@@ -129,14 +129,16 @@ async def test_stream_chat_tool_calls():
 
 # ── Agent tests ────────────────────────────────────────────────
 
+@pytest.mark.slow
 def test_agent_construct():
-    agent = Agent(model="x", provider="openai")
+    agent = Agent(model="qwen3.5:9b", provider="ollama")
     assert not agent.stopped
 
     agent.stop()
     assert agent.stopped
 
 
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_agent_with_tool():
     """Agent executes a tool when the LLM requests one, then continues."""
@@ -144,7 +146,7 @@ async def test_agent_with_tool():
     async def read(path: str) -> str:
         return f"contents of {path}"
 
-    agent = Agent(model="m", provider="openai")
+    agent = Agent(model="qwen3.5:9b", provider="ollama")
     # Monkey-patch the internal client creation by overriding provider config
     agent._provider_config.base_url = "http://test"
     agent._provider_config.api_key = None

@@ -24,8 +24,8 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
         own default if ``None``.
     """
     try:
-        from pvlwebtools import web_fetch as _web_fetch
-        from pvlwebtools import web_search as _web_search
+        from pvlwebtools import web_fetch as _web_fetch  # type: ignore
+        from pvlwebtools import web_search as _web_search  # type: ignore
     except ImportError as exc:
         raise ImportError(
             "Web tools require 'pvl-webtools'. "
@@ -52,6 +52,8 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
             Time filter: ``all_time``, ``day``, ``week``, ``month``, or ``year``.
         """
         try:
+            if max_results is not None:
+                max_results = int(max_results)
             results = await _web_search(
                 query=query,
                 max_results=max_results,
@@ -60,7 +62,10 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
                 searxng_url=searxng_url,
             )
         except Exception as exc:
-            return f"Error: {exc}"
+            msg = str(exc)
+            if "SearXNG URL not configured" in msg:
+                msg += " or set searxng_url in ~/.ma-config.toml"
+            return f"Error: {msg}"
 
         if not results:
             return "No results found."

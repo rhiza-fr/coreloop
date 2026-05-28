@@ -47,6 +47,9 @@ class Message(BaseModel):
     name: str | None = None
     reasoning: str | None = None
     partial: bool = False
+    usage: "Usage | None" = None
+    duration: float | None = None
+    model: str | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

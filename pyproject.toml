@@ -11,6 +11,9 @@ dependencies = [
     "httpx>=0.28.1",
     "typer>=0.26.1",
     "pydantic>=2.0,<3",
+    "diskcache>=5.6.3",
+    "python-dotenv>=1.0.1",
+    "rich>=13.0.0",
 ]
 
 [project.optional-dependencies]
@@ -34,3 +37,12 @@ dev = [
 [tool.ruff]
 target-version = "py314"
 line-length = 100
+
+[tool.pytest.ini_options]
+addopts = "-m 'not slow' --strict-markers"
+markers = [
+    "slow: tests that require a running Ollama instance or provider connection",
+]
+
+[tool.cq.thresholds]
+"radon-hal" = { warning = 0.45, error = 0.25 }

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, AsyncIterator
 
 import httpx
 
+from ._cache import request_key
 from ._types import Message, ToolCall, FunctionCall, Usage
 
 
@@ -24,6 +26,7 @@ async def stream_chat(
     client: httpx.AsyncClient | None = None,
     extra_body: dict[str, Any] | None = None,
     usage: Usage | None = None,
+    cache: Any = None,
 ) -> AsyncIterator[Message]:
     """Stream chat completion chunks from an OpenAI-compatible API.
 
@@ -31,6 +34,14 @@ async def stream_chat(
     The last yielded message for a turn will have either ``content`` set
     **or** ``tool_calls`` populated (or both).
     """
+    cache_key: str | None = None
+    if cache is not None:
+        cache_key = request_key(model, messages, tools, extra_body)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            yield Message.model_validate_json(cached)
+            return
+
     headers = {
         "Content-Type": "application/json",
         "Accept": "text/event-stream",
@@ -46,8 +57,7 @@ async def stream_chat(
     }
     if tools:
         body["tools"] = tools
-    if usage is not None:
-        body["stream_options"] = {"include_usage": True}
+    body["stream_options"] = {"include_usage": True}
     if extra_body:
         for k, v in extra_body.items():
             if k not in _PROTECTED:
@@ -60,12 +70,22 @@ async def stream_chat(
     accumulated_tool_calls: list[ToolCall] | None = None
     # For incremental tool-call building: index → partial ToolCall
     partials: dict[int, dict[str, Any]] = {}
+    captured_usage: Usage | None = None
+    # Assembled on finish_reason; held until [DONE] so usage chunk can arrive first
+    pending_message: Message | None = None
 
     _owned = client is None
     _session = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout))
+    _t0 = time.perf_counter()
     try:
         async with _session.stream("POST", url, headers=headers, json=body) as resp:
-            resp.raise_for_status()
+            if resp.status_code >= 400:
+                await resp.aread()
+                detail = resp.text[:500]
+                msg = f"HTTP {resp.status_code} from {url}"
+                if detail:
+                    msg += f": {detail}"
+                raise httpx.HTTPStatusError(msg, request=resp.request, response=resp)
             async for line in resp.aiter_lines():
                 line = line.strip()
                 if not line or not line.startswith("data: "):
@@ -78,6 +98,19 @@ async def stream_chat(
                     chunk = json.loads(payload)
                 except json.JSONDecodeError:
                     continue
+
+                # --- usage (arrives in a separate no-choices chunk after finish_reason) ---
+                if "usage" in chunk and chunk["usage"]:
+                    u = chunk["usage"]
+                    pt = u.get("prompt_tokens", 0)
+                    ct = u.get("completion_tokens", 0)
+                    tt = u.get("total_tokens", 0)
+                    captured_usage = Usage(prompt_tokens=pt, completion_tokens=ct, total_tokens=tt)
+                    if usage is not None:
+                        usage.prompt_tokens += pt
+                        usage.completion_tokens += ct
+                        usage.total_tokens += tt
+
                 choices = chunk.get("choices", [])
                 if not choices:
                     continue
@@ -96,14 +129,8 @@ async def stream_chat(
                         role="assistant",
                         content=accumulated_content,
                         partial=True,
+                        model=model,
                     )
-
-                # --- usage (present in stream_options usage chunk, no choices) ---
-                if usage is not None and "usage" in chunk and chunk["usage"]:
-                    u = chunk["usage"]
-                    usage.prompt_tokens += u.get("prompt_tokens", 0)
-                    usage.completion_tokens += u.get("completion_tokens", 0)
-                    usage.total_tokens += u.get("total_tokens", 0)
 
                 # --- tool call deltas ---
                 raw_tool_calls = delta.get("tool_calls")
@@ -126,7 +153,7 @@ async def stream_chat(
                             if "arguments" in fn and fn["arguments"]:
                                 partial["function"]["arguments"] += fn["arguments"]
 
-                # --- finalise on finish ---
+                # --- assemble on finish, but keep reading for the usage chunk ---
                 if finish_reason:
                     if partials:
                         accumulated_tool_calls = [
@@ -138,25 +165,35 @@ async def stream_chat(
                                     arguments=p["function"]["arguments"],
                                 ),
                             )
-                            for idx, p in sorted(partials.items())
+                            for _idx, p in sorted(partials.items())
                         ]
                         partials.clear()
-
-                    yield Message(
+                    pending_message = Message(
                         role="assistant",
                         content=accumulated_content or None,
                         tool_calls=accumulated_tool_calls,
                         reasoning=accumulated_reasoning or None,
+                        model=model,
                     )
-                    return
 
-        # Fallback yield if stream ends without finish_reason
-        yield Message(
-            role="assistant",
-            content=accumulated_content or None,
-            tool_calls=accumulated_tool_calls,
-            reasoning=accumulated_reasoning or None,
+        # Yield the final message after [DONE] so usage is populated
+        _duration = time.perf_counter() - _t0
+        final_message = (
+            pending_message.model_copy(update={"usage": captured_usage, "duration": _duration})
+            if pending_message is not None
+            else Message(
+                role="assistant",
+                content=accumulated_content or None,
+                tool_calls=accumulated_tool_calls,
+                reasoning=accumulated_reasoning or None,
+                usage=captured_usage,
+                duration=_duration,
+                model=model,
+            )
         )
+        if cache is not None and cache_key is not None:
+            cache.set(cache_key, final_message.model_dump_json())
+        yield final_message
     finally:
         if _owned:
             await _session.aclose()
