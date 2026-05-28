@@ -8,13 +8,19 @@ import os
 from pathlib import Path
 from typing import Optional
 
+import httpx
 import typer
+from rich.console import Console
 
 from ._agent import Agent
 from ._builtin_tools import make_tools
+from ._config import DefaultConfig, config_path, resolve_defaults, resolve_model_config
 from ._tool import ToolInfo
 from ._web_tools import make_web_tools
 from ._types import Message
+
+_DEFAULTS = resolve_defaults()
+_console = Console()
 
 app = typer.Typer(
     name="ma",
@@ -35,8 +41,27 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
+def _ensure_home_config() -> None:
+    """Auto-install ~/.ma-config.toml on first run if it doesn't exist."""
+    dst = Path.home() / ".ma-config.toml"
+    if dst.exists():
+        return
+    src = config_path()
+    if src == dst:
+        return
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    header = (
+        f"# Originally installed by minimal-agent from {src}\n"
+        "# Edit this file to configure provider, model, and default tools.\n\n"
+    )
+    dst.write_text(header + src.read_text())
+
+
 def _build_tools(
-    tools_opt: str | None, root: str | None, searxng_url: str | None = None
+    tools_opt: str | None,
+    root: str | None,
+    searxng_url: str | None = None,
+    cfg: DefaultConfig | None = None,
 ) -> list[ToolInfo] | None:
     """Return a filtered list of tools, or None if no tools requested."""
     if not tools_opt:
@@ -52,11 +77,24 @@ def _build_tools(
         raise typer.Exit(1)
     result: list[ToolInfo] = []
     if names & _BUILTIN_TOOL_NAMES:
-        fs_tools = make_tools(allowed_root=root)
+        fs_tools = make_tools(
+            allowed_root=root,
+            read_max_lines=cfg.tool_read_max_lines if cfg else 100,
+            search_max_chars=cfg.tool_search_max_chars if cfg else 20_000,
+            search_timeout=cfg.tool_search_timeout if cfg else 30.0,
+        )
         result.extend(t for t in fs_tools if t.name in names)
     if names & _WEB_TOOL_NAMES:
         url = searxng_url or os.environ.get("SEARXNG_URL")
-        web_tools = make_web_tools(searxng_url=url)
+        try:
+            web_tools = make_web_tools(searxng_url=url)
+        except ImportError:
+            typer.echo(
+                "To use web_search or web_fetch, install web extras: "
+                "pip install minimal-agent[web]",
+                err=True,
+            )
+            raise typer.Exit(1)
         result.extend(t for t in web_tools if t.name in names)
     return result
 
@@ -67,8 +105,12 @@ def main(
     prompt: Optional[str] = typer.Option(
         None, "--prompt", "-p", help="Run once and print final result (non-interactive)"
     ),
-    model: str = typer.Option("gpt-4o-mini", "--model", "-m", help="Model name"),
-    provider: str = typer.Option("openai", "--provider", help="Provider name"),
+    model: str = typer.Option(
+        _DEFAULTS.model, "--model", "-m", help="Model name"
+    ),
+    provider: str = typer.Option(
+        _DEFAULTS.provider, "--provider", help="Provider name"
+    ),
     system: Optional[str] = typer.Option(
         None, "--system", "-s", help="System prompt (optional)"
     ),
@@ -86,18 +128,18 @@ def main(
         help="SearXNG base URL for web tools (overrides SEARXNG_URL env var)",
         envvar="SEARXNG_URL",
     ),
-    timeout: float = typer.Option(
-        60.0, "--timeout", "-t", help="Timeout for LLM and tool calls"
+    timeout: Optional[float] = typer.Option(
+        None, "--timeout", "-t", help="Timeout for LLM and tool calls"
     ),
-    max_turns: int = typer.Option(
-        20, "--max-turns", "-n", help="Maximum agent loop iterations"
+    max_turns: Optional[int] = typer.Option(
+        None, "--max-turns", "-n", help="Maximum agent loop iterations"
     ),
-    max_messages: int = typer.Option(
-        0, "--max-messages", "-M",
+    max_messages: Optional[int] = typer.Option(
+        None, "--max-messages", "-M",
         help="Stop after N yielded messages (0 = unlimited)",
     ),
-    think: bool = typer.Option(
-        False, "--think/--no-think",
+    think: Optional[bool] = typer.Option(
+        None, "--think/--no-think",
         help="Enable (medium) or disable (none) reasoning_effort",
     ),
     extra: Optional[str] = typer.Option(
@@ -116,27 +158,76 @@ def main(
     if ctx.invoked_subcommand is not None:
         return
 
+    _ensure_home_config()
+
+    # Resolve model-specific overrides from config
+    cfg = resolve_model_config(model)
+
+    # Apply model config as fallbacks for unset CLI options
+    if tools_opt is None and cfg.tools:
+        tools_opt = ",".join(cfg.tools)
+    if system is None and cfg.system:
+        system = cfg.system
+    if think is None:
+        think = cfg.think
+    if extra is None and cfg.extra:
+        extra = json.dumps(cfg.extra)
+    if max_turns is None:
+        max_turns = cfg.max_turns
+    if max_messages is None:
+        max_messages = cfg.max_messages
+    if searxng_url is None and cfg.searxng_url:
+        searxng_url = cfg.searxng_url
+    resolved_timeout: float = timeout if timeout is not None else cfg.llm_timeout
+
     extra_body: dict | None = json.loads(extra) if extra else None
     extra_body = (extra_body or {}) | {"reasoning_effort": "medium" if think else "none"}
 
-    tools = _build_tools(tools_opt, root, searxng_url)
+    tools = _build_tools(tools_opt, root, searxng_url, cfg)
 
-    agent = Agent(
-        model=model,
-        provider=provider,
-        system=system,
-        tools=tools,
-        timeout=timeout,
-        max_turns=max_turns,
-        max_messages=max_messages,
-        extra_body=extra_body,
-    )
+    try:
+        agent = Agent(
+            model=model,
+            provider=provider,
+            system=system,
+            tools=tools,
+            timeout=resolved_timeout,
+            max_turns=max_turns,
+            max_messages=max_messages,
+            extra_body=extra_body,
+        )
+    except KeyError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1)
+    except ValueError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1)
 
     if prompt is not None:
-        asyncio.run(_once(agent, prompt, json_out=json_out))
+        try:
+            asyncio.run(_once(agent, prompt, json_out=json_out))
+        except httpx.HTTPStatusError as exc:
+            typer.echo(f"Error: {exc.response.status_code} from {exc.request.url}", err=True)
+            body = exc.response.text[:500]
+            if body:
+                typer.echo(f"  {body}", err=True)
+            raise typer.Exit(1)
+        except httpx.RequestError as exc:
+            typer.echo(f"Error: request failed — {exc}", err=True)
+            raise typer.Exit(1)
     else:
-        asyncio.run(_repl(agent, model, provider, root, tools_opt, searxng_url,
-                          system, timeout, max_turns, max_messages, extra_body))
+        try:
+            asyncio.run(_repl(agent, model, provider, root, tools_opt, searxng_url,
+                              system, resolved_timeout, max_turns, max_messages, extra_body, cfg))
+        except httpx.HTTPStatusError as exc:
+            typer.echo(f"Error: {exc.response.status_code} from {exc.request.url}", err=True)
+            body = exc.response.text[:500]
+            if body:
+                typer.echo(f"  {body}", err=True)
+            raise typer.Exit(1)
+        except httpx.RequestError as exc:
+            typer.echo(f"Error: request failed — {exc}", err=True)
+            raise typer.Exit(1)
 
 
 async def _once(agent: Agent, prompt: str, *, json_out: bool = False) -> None:
@@ -167,16 +258,17 @@ async def _repl(
     max_turns: int,
     max_messages: int,
     extra_body: dict | None,
+    cfg: DefaultConfig | None = None,
 ) -> None:
     cwd_display = Path(root or os.getcwd()).resolve()
     header = f"ma — model={model} provider={provider}"
     if tools_opt:
         header += f"  tools={tools_opt}  root={cwd_display}"
-    typer.echo(header)
-    cmds = "/quit  /stop  /reset"
+    _console.print(header, style="cyan")
+    cmds = "/quit  /stop  /new"
     if tools_opt:
         cmds += "  /root <path>"
-    typer.echo(f"Commands: {cmds}\n")
+    _console.print(f"Commands: {cmds}\n", style="bright_black")
 
     state: dict = {"agent": agent, "root": root}
 
@@ -191,17 +283,18 @@ async def _repl(
             break
         if cmd == "/stop":
             state["agent"].stop()
-            typer.echo("Agent stopped.")
+            _console.print("Agent stopped.", style="yellow")
             continue
-        if cmd == "/reset":
+        if cmd == "/new":
+            state["agent"].stop()
             state["agent"].reset()
-            typer.echo("Conversation reset.")
+            _console.print("Started new conversation.", style="green")
             continue
         if tools_opt and cmd.startswith("/root "):
             new_root = user_input[6:].strip()
             if new_root:
                 state["root"] = new_root
-                new_tools = _build_tools(tools_opt, new_root, searxng_url)
+                new_tools = _build_tools(tools_opt, new_root, searxng_url, cfg)
                 state["agent"] = Agent(
                     model=model,
                     provider=provider,
@@ -212,7 +305,7 @@ async def _repl(
                     max_messages=max_messages,
                     extra_body=extra_body,
                 )
-                typer.echo(f"Root changed to {Path(new_root).resolve()}")
+                _console.print(f"Root changed to {Path(new_root).resolve()}", style="green")
             continue
         if not user_input.strip():
             continue
@@ -224,10 +317,11 @@ async def _repl(
             if msg.role == "assistant":
                 if msg.tool_calls:
                     for tc in msg.tool_calls:
-                        typer.echo(f"  tool: {tc.function.name}({tc.function.arguments})")
+                        _console.print(f"  tool: {tc.function.name}({tc.function.arguments})", style="yellow")
                 elif msg.content and not msg.partial:
-                    typer.echo(f"  {msg.content}")
+                    _console.print(f"  {msg.content}")
             elif msg.role == "tool":
                 display = (msg.content or "")[:300]
-                typer.echo(f"  [{msg.name}] {display}")
+                _console.print(f"  [{msg.name}] {display}", style="bright_black")
         typer.echo()
+

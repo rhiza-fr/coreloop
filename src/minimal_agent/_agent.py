@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
+from pathlib import Path
 from typing import Any, AsyncIterator
 
+from ._cache import make_cache
 from ._client import stream_chat
-from ._provider import resolve_provider
+from ._config import resolve_provider
 from ._tool import ToolInfo, list_tools
 from ._types import Message, ToolCall, Usage
+
+_DEFAULT_CACHE_DIR = Path.home() / ".cache" / "minimal-agent"
 
 
 class Agent:
@@ -47,6 +52,7 @@ class Agent:
         max_turns: int = 20,
         max_messages: int = 0,
         extra_body: dict[str, Any] | None = None,
+        cache_dir: Path | str | None = _DEFAULT_CACHE_DIR,
     ) -> None:
         # Public — safe to read/write between runs
         self.model = model
@@ -56,6 +62,7 @@ class Agent:
         self.max_turns = max_turns
         self.max_messages = max_messages
         self.extra_body = extra_body
+        self._cache = make_cache(cache_dir) if cache_dir is not None else None
 
         # Resolve provider config lazily on first run
         self._provider_config = resolve_provider(provider)
@@ -102,6 +109,15 @@ class Agent:
         self._stop_event.set()
         if self._current_task is not None and not self._current_task.done():
             self._current_task.cancel()
+
+    def stop_after_turn(self) -> None:
+        """Signal the agent to stop after the current turn completes.
+
+        Safe to call from inside a tool — sets the stop flag without
+        cancelling the task, so the tool result is collected normally and
+        the loop exits cleanly before the next LLM call.
+        """
+        self._stop_event.set()
 
     @property
     def stopped(self) -> bool:
@@ -161,101 +177,155 @@ class Agent:
             )
 
         turns = 0
-        complete_yielded = 0  # counts only non-partial messages
+        self._complete_yielded = 0
+        self._max_messages_reached = False
         try:
             while not self._stop_event.is_set():
                 if turns >= self.max_turns:
                     yield Message(
                         role="assistant",
-                        content=f"[Agent stopped: reached max turns ({self.max_turns})]",
+                        content=(
+                            f"[Agent stopped: reached max turns "
+                            f"({self.max_turns})]"
+                        ),
+                        model=self.model,
                     )
                     return
                 turns += 1
 
                 # ── 1. LLM call ──────────────────────────────────
-                assistant_msg: Message | None = None
-                try:
-                    last_chunk: Message | None = None
-                    async for chunk in stream_chat(
-                        base_url=self._provider_config.base_url,
-                        api_key=self._provider_config.api_key,
-                        model=self.model,
-                        messages=_dump_messages(self._conversation),
-                        tools=self._tool_schemas(),
-                        timeout=self.timeout,
-                        extra_body=self.extra_body,
-                        usage=usage,
-                    ):
-                        if self._stop_event.is_set():
-                            return
-                        last_chunk = chunk
-                        if chunk.partial:
-                            yield chunk
-                        else:
-                            yield chunk.model_copy()
-                            complete_yielded += 1
-                            if self.max_messages > 0 and complete_yielded >= self.max_messages:
-                                yield Message(
-                                    role="assistant",
-                                    content=(
-                                        f"[Agent stopped: reached max messages "
-                                        f"({self.max_messages})]"
-                                    ),
-                                )
-                                return
-                    assistant_msg = last_chunk
-                except asyncio.CancelledError:
-                    if self._stop_event.is_set():
-                        return
-                    raise
+                async for msg in self._stream_llm_response(usage):
+                    yield msg
 
-                if assistant_msg is None:
+                if (
+                    self._stop_event.is_set()
+                    or self._max_messages_reached
+                    or self._llm_last_chunk is None
+                ):
                     return
 
+                assistant_msg = self._llm_last_chunk
                 self._conversation.append(assistant_msg)
 
-                # ── 2. Check for tool calls ──────────────────────
-                tool_calls = assistant_msg.tool_calls
-                if not tool_calls:
+                if not assistant_msg.tool_calls:
                     return  # normal completion — no tools requested
 
-                # ── 3. Execute tools concurrently ───────────────
+                results = await asyncio.gather(
+                    *[
+                        self._exec_single_tool(tc)
+                        for tc in assistant_msg.tool_calls
+                    ]
+                )
+
+                async for msg in self._emit_tool_results(results):
+                    yield msg
+                if self._max_messages_reached:
+                    return
+        finally:
+            self._current_task = None
+
+    def _check_max_messages(self) -> Message | None:
+        """Increment complete counter and return a stop message if the limit is reached,
+        else None."""
+        self._complete_yielded += 1
+        if self.max_messages > 0 and self._complete_yielded >= self.max_messages:
+            return Message(
+                role="assistant",
+                content=(
+                    f"[Agent stopped: reached max messages "
+                    f"({self.max_messages})]"
+                ),
+                model=self.model,
+            )
+        return None
+
+    async def _emit_tool_results(
+        self, results: list[tuple[ToolCall, str, float]]
+    ) -> AsyncIterator[Message]:
+        """Yield tool result messages, appending each to the conversation.
+
+        Stops early with a stop message if ``max_messages`` is reached.
+        The caller should return from ``run()`` after this iterator
+        completes — if the limit was hit the stop message is the last
+        item yielded.
+        """
+        for tc, result_content, tool_duration in results:
+            tool_msg = Message(
+                role="tool",
+                content=result_content,
+                tool_call_id=tc.id,
+                name=tc.function.name,
+                duration=tool_duration,
+            )
+            self._conversation.append(tool_msg)
+            yield tool_msg
+            stop_msg = self._check_max_messages()
+            if stop_msg is not None:
+                yield stop_msg
+                self._max_messages_reached = True
+                return
+
+    async def _stream_llm_response(
+        self, usage: Usage | None
+    ) -> AsyncIterator[Message]:
+        """Run one LLM streaming turn, yielding partial and complete messages.
+
+        Wraps the ``stream_chat`` call and ``CancelledError`` handling so the
+        caller's loop stays flat.  After iteration, the final assembled
+        ``Message`` is stored in ``self._llm_last_chunk`` (or ``None`` if the
+        generator exited without receiving any chunk).
+        """
+        self._llm_last_chunk = None
+        try:
+            async for chunk in stream_chat(
+                base_url=self._provider_config.base_url,
+                api_key=self._provider_config.api_key,
+                model=self.model,
+                messages=_dump_messages(self._conversation),
+                tools=self._tool_schemas(),
+                timeout=self.timeout,
+                extra_body=self.extra_body,
+                usage=usage,
+                cache=self._cache,
+            ):
                 if self._stop_event.is_set():
                     return
-
-                async def _exec(tc: ToolCall) -> tuple[ToolCall, str]:
-                    info = self._resolve_tool(tc.function.name)
-                    if info is None:
-                        return tc, (
-                            f"Error: unknown tool '{tc.function.name}'. "
-                            f"Available tools: "
-                            f"{', '.join(t.name for t in self._all_tools())}"
-                        )
-                    return tc, await self._run_tool(info, tc)
-
-                results = await asyncio.gather(*[_exec(tc) for tc in tool_calls])
-
-                for tc, result_content in results:
-                    tool_msg = Message(
-                        role="tool",
-                        content=result_content,
-                        tool_call_id=tc.id,
-                        name=tc.function.name,
-                    )
-                    self._conversation.append(tool_msg)
-                    yield tool_msg
-                    complete_yielded += 1
-                    if self.max_messages > 0 and complete_yielded >= self.max_messages:
+                self._llm_last_chunk = chunk
+                if chunk.partial:
+                    yield chunk
+                else:
+                    yield chunk.model_copy()
+                    self._complete_yielded += 1
+                    if self.max_messages > 0 and self._complete_yielded >= self.max_messages:
                         yield Message(
                             role="assistant",
                             content=(
                                 f"[Agent stopped: reached max messages "
                                 f"({self.max_messages})]"
                             ),
+                            model=self.model,
                         )
+                        self._max_messages_reached = True
                         return
-        finally:
-            self._current_task = None
+        except asyncio.CancelledError:
+            if self._stop_event.is_set():
+                return
+            raise
+
+    async def _exec_single_tool(
+        self, tc: ToolCall
+    ) -> tuple[ToolCall, str, float]:
+        """Execute a single tool call and return (call, result, duration)."""
+        info = self._resolve_tool(tc.function.name)
+        if info is None:
+            return tc, (
+                f"Error: unknown tool '{tc.function.name}'. "
+                f"Available tools: "
+                f"{', '.join(t.name for t in self._all_tools())}"
+            ), 0.0
+        t0 = time.perf_counter()
+        result = await self._run_tool(info, tc)
+        return tc, result, time.perf_counter() - t0
 
     # ── internals ──────────────────────────────────────────────
 
