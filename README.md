@@ -2,6 +2,14 @@
 
 A minimal, dependency-light LLM agent loop built on any OpenAI-compatible API.
 
+This is not meant to compete with pi, claude, opencode etc.
+
+I wanted a very light tool-capable agent loop that is interuptable and inspectable, with minimal overhead.
+
+The repl is functional but intentionally weak.
+
+TODO explain how to use agent loop as an iterator.
+
 ## Install
 
 ```bash
@@ -22,10 +30,10 @@ ma -p "Summarise this repo" --model gpt-4o-mini
 # With file tools
 ma --tools read,ls,search,edit --root .
 
-# With web tools (requires SearXNG)
+# With web tools (requires [web] and a SearXNG url)
 ma --tools web_search,web_fetch --searxng-url http://localhost:8080
 
-# With reasoning enabled
+# With thinking enabled
 ma -p "Solve this step by step" --think
 ```
 
@@ -43,13 +51,63 @@ ma -p "Solve this step by step" --think
 | `-t, --timeout` | `60.0` | Timeout in seconds for LLM and tool calls |
 | `-n, --max-turns` | `20` | Maximum agent loop iterations |
 | `-M, --max-messages` | `0` (unlimited) | Stop after N yielded messages |
-| `--think` | off | Enable `reasoning_effort=medium` |
+| `--think/--no-think` | off | Enable (`medium`) or disable (`none`) reasoning_effort |
 | `-e, --extra` | — | Extra JSON body params merged into the API request |
 | `--json` | off | Output all messages as JSONL |
+| `-V, --version` | — | Show version and exit |
+
+### REPL commands
+
+Once the interactive REPL starts:
+
+| Command | Description |
+|---------|-------------|
+| `/quit` or `/exit` or `/q` | Exit the REPL |
+| `/stop` | Cancel the current agent run mid-turn |
+| `/new` | Clear conversation history and start fresh |
+| `/root <path>` | Change the allowed root for file tools (if `--tools` was set) |
 
 ## Providers
 
-Providers are configured in `providers.toml` at the repo root. Each entry specifies a `base_url` and an optional `env_key_name` for the API key.
+Providers are configured in `.ma-config.toml`. Resolution order (first found wins):
+
+1. `$MA_CONFIG_PATH` env var
+2. `~/.ma-config.toml`
+3. Package-local `src/minimal_agent/.ma-config.toml`
+4. Repo root `.ma-config.toml` (for dev installs)
+
+On first run, `ma` auto-creates `~/.ma-config.toml` from the shipped default.
+
+Two top-level sections:
+
+- `[defaults]` — default provider, model, tools, and other settings
+- `[providers.<name>]` — each provider with `base_url` and optional `env_key_name`
+- `[models.<name>]` — optional per-model overrides merged on top of `[defaults]`
+
+Example:
+
+```toml
+[defaults]
+provider = "openai"
+model = "gpt-4o-mini"
+tools = ["read", "edit", "ls", "search"]
+# think = false
+# extra = {"reasoning_effort": "medium"}
+# max_turns = 20
+# searxng_url = "http://localhost:8888"
+
+[providers.openai]
+base_url = "https://api.openai.com/v1"
+env_key_name = "OPENAI_API_KEY"
+
+[providers.ollama]
+base_url = "http://localhost:11434/v1"
+
+# Per-model overrides — any field from [defaults] can be overridden
+[models."gpt-4o"]
+think = true
+max_turns = 30
+```
 
 | Provider | Env var |
 |----------|---------|
@@ -60,8 +118,6 @@ Providers are configured in `providers.toml` at the repo root. Each entry specif
 | `together` | `TOGETHER_API_KEY` |
 | `openrouter` | `OPENROUTER_API_KEY` |
 | `ollama` | (none) |
-
-Point `MA_PROVIDERS_PATH` at a custom TOML file to override or extend the built-in list.
 
 ## Tools
 
@@ -98,7 +154,7 @@ ma --tools web_search,web_fetch -p "Latest news on X"
 ## Library
 
 ```python
-from minimal_agent import Agent, tool, make_tools, make_web_tools
+from minimal_agent import Agent, Message, tool, make_tools, make_web_tools
 
 # Register a custom tool globally
 @tool
@@ -113,7 +169,7 @@ agent = Agent(
     tools=make_tools(allowed_root="/tmp/sandbox"),
 )
 
-async for msg in agent.run("List the files here, then read README.md"):
+async for msg in agent.run([Message(role="user", content="List the files here, then read README.md")]):
     if msg.content:
         print(msg.content)
 
@@ -128,15 +184,85 @@ Agent(
     model: str,
     provider: str = "openai",
     system: str | None = None,
-    tools: list[ToolInfo] | None = None,   # per-agent (takes priority)
+    tools: list[ToolInfo] | None = None,   # per-agent (takes priority over global)
     timeout: float = 60.0,
     max_turns: int = 20,
     max_messages: int = 0,
     extra_body: dict | None = None,
+    cache_dir: Path | str | None = "~/.cache/minimal-agent",  # None disables caching
 )
 ```
 
-`agent.run(prompt)` is an async generator that yields `Message` objects as they stream. Call `agent.stop()` to cancel mid-run. After completion, `agent.conversation` holds the full history for reuse or handoff.
+`agent.run(messages)` is an async generator that yields `Message` objects as they stream. It accepts an optional `usage` keyword argument — a mutable `Usage` object that cumulative token counts are added to after each LLM turn (requires provider support).
+
+| Method | Description |
+|--------|-------------|
+| `stop()` | Cancel the current run immediately (sets stop flag + cancels task) |
+| `stop_after_turn()` | Graceful stop: finish the current tool execution, then exit the loop |
+| `reset()` | Clear conversation history and reset the stop flag |
+| `conversation` (property) | Shallow copy of the full chat history from the last `run()` |
+
+**Restart pattern** — pass `agent.conversation` to a second `run()` to keep history:
+
+```python
+async for msg in agent.run([Message(role="user", content="Hi")]):
+    ...
+
+# Restart with a different model, keeping the conversation
+agent.model = "better-model"
+async for msg in agent.run(agent.conversation):
+    ...
+```
+
+### `Message`
+
+Pydantic model matching the OpenAI chat format:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `role` | `str` | `"user"`, `"assistant"`, `"system"`, or `"tool"` |
+| `content` | `str \| None` | Text content (`None` when `tool_calls` is set) |
+| `tool_calls` | `list[ToolCall] \| None` | Tool calls emitted by the assistant |
+| `tool_call_id` | `str \| None` | Tool call ID (for `role="tool"` messages) |
+| `name` | `str \| None` | Tool name (for `role="tool"` messages) |
+| `reasoning` | `str \| None` | Streaming-only field from thinking models (Qwen3, DeepSeek). Omitted from conversation history sent back to the API. |
+| `partial` | `bool` | `True` for streaming delta chunks; `False` for the final assembled message |
+| `usage` | `Usage \| None` | Token usage reported by the model |
+| `duration` | `float \| None` | Tool execution duration in seconds |
+| `model` | `str \| None` | Model name that generated this message |
+| `timestamp` | `datetime` | When the message was created (UTC) |
+
+### `ToolInfo`
+
+```python
+@dataclass
+class ToolInfo:
+    name: str
+    description: str
+    parameters: dict[str, Any]  # JSON Schema
+    fn: Callable[..., Coroutine[Any, Any, str]]
+```
+
+### `ToolCall` / `FunctionCall`
+
+```python
+class ToolCall(BaseModel):
+    id: str
+    type: str = "function"
+    function: FunctionCall
+
+class FunctionCall(BaseModel):
+    name: str = ""
+    arguments: str = ""  # JSON-encoded
+```
+
+### `Usage`
+
+```python
+class Usage(BaseModel):
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+```
 
 ### Custom tools
 
@@ -152,4 +278,30 @@ async def read_env(name: str) -> str:
     return os.environ.get(name, "(not set)")
 ```
 
-Tools are auto-discovered by all `Agent` instances once registered.
+Tools are auto-discovered by all `Agent` instances once registered. To register under a different name or with a description:
+
+```python
+@tool(name="my_read", description="Read a file")
+async def read(path: str) -> str:
+    ...
+
+@tool(allow_override=True)  # re-register even if a tool with that name exists
+async def override(name: str) -> str:
+    ...
+```
+
+### Registry helpers
+
+```python
+from minimal_agent import clear_registry
+clear_registry()  # remove all registered tools (useful in tests)
+```
+
+### Caching
+
+LLM responses are disk-cached by default (in `~/.cache/minimal-agent/`) to avoid re-sending identical requests. Pass `cache_dir=None` to `Agent(...)` to disable.
+
+```python
+from minimal_agent import make_cache
+cache = make_cache("/tmp/my-cache")
+```
