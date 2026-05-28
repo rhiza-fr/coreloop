@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-import os
 from pathlib import Path
 
 from .._tool import ToolInfo
@@ -35,7 +34,7 @@ def make_read_tool(root: str, *, max_lines: int = 100) -> ToolInfo:
             return "Error: limit must be a positive integer"
 
         try:
-            file_size = os.path.getsize(safe)
+            file_size = Path(safe).stat().st_size
         except OSError as exc:
             return f"Error: cannot stat {path!r}: {exc}"
 

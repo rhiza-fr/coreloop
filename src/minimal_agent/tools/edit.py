@@ -65,7 +65,7 @@ def make_edit_tool(root: str) -> ToolInfo:
             return "Error: old_text must be a non-empty string"
 
         try:
-            file_size = os.path.getsize(safe)
+            file_size = Path(safe).stat().st_size
         except OSError as exc:
             return f"Error: cannot stat {path!r}: {exc}"
 
@@ -109,7 +109,7 @@ def make_edit_tool(root: str) -> ToolInfo:
         tmp_path = None
         try:
             with tempfile.NamedTemporaryFile(
-                "w", dir=os.path.dirname(safe), delete=False, encoding="utf-8", suffix=".tmp"
+                "w", dir=Path(safe).parent, delete=False, encoding="utf-8", suffix=".tmp"
             ) as tmp:
                 tmp.write(new_content)
                 tmp_path = tmp.name

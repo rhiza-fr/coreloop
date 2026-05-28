@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import typing
 import types
 from dataclasses import dataclass
 from typing import Any, Callable, Coroutine, overload
@@ -55,8 +56,6 @@ def _infer_parameters(fn: Callable) -> dict[str, Any]:
 
 def _pytype_to_jsonschema(tp: type) -> dict[str, Any]:
     """Best-effort Python type → JSON Schema type mapping."""
-    import typing
-
     origin = typing.get_origin(tp)
     args = typing.get_args(tp) if origin else ()
 

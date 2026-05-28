@@ -21,6 +21,8 @@ from ._types import Message
 
 _DEFAULTS = resolve_defaults()
 _console = Console()
+_HTTP_ERROR_BODY_PREVIEW = 500
+_TOOL_RESULT_PREVIEW = 300
 
 app = typer.Typer(
     name="ma",
@@ -208,7 +210,7 @@ def main(
             asyncio.run(_once(agent, prompt, json_out=json_out))
         except httpx.HTTPStatusError as exc:
             typer.echo(f"Error: {exc.response.status_code} from {exc.request.url}", err=True)
-            body = exc.response.text[:500]
+            body = exc.response.text[:_HTTP_ERROR_BODY_PREVIEW]
             if body:
                 typer.echo(f"  {body}", err=True)
             raise typer.Exit(1)
@@ -221,7 +223,7 @@ def main(
                               system, resolved_timeout, max_turns, max_messages, extra_body, cfg))
         except httpx.HTTPStatusError as exc:
             typer.echo(f"Error: {exc.response.status_code} from {exc.request.url}", err=True)
-            body = exc.response.text[:500]
+            body = exc.response.text[:_HTTP_ERROR_BODY_PREVIEW]
             if body:
                 typer.echo(f"  {body}", err=True)
             raise typer.Exit(1)
@@ -321,7 +323,7 @@ async def _repl(
                 elif msg.content and not msg.partial:
                     _console.print(f"  {msg.content}")
             elif msg.role == "tool":
-                display = (msg.content or "")[:300]
+                display = (msg.content or "")[:_TOOL_RESULT_PREVIEW]
                 _console.print(f"  [{msg.name}] {display}", style="bright_black")
         typer.echo()
 

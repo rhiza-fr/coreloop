@@ -404,7 +404,7 @@ class Agent:
             )
         except asyncio.CancelledError:
             raise
-        except BaseException as exc:
+        except Exception as exc:
             return f"Error in tool '{info.name}': {exc}"
 
 

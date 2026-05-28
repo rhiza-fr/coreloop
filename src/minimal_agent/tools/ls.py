@@ -25,7 +25,8 @@ def make_ls_tool(root: str) -> ToolInfo:
         except ValueError as exc:
             return f"Error: {exc}"
 
-        if not os.path.isdir(safe):
+        safe_path = Path(safe)
+        if not safe_path.is_dir():
             return f"Error: {path!r} is not a directory"
 
         try:
@@ -35,20 +36,20 @@ def make_ls_tool(root: str) -> ToolInfo:
 
         lines: list[str] = []
         for name in entries[:_MAX_LS_ENTRIES]:
-            full = os.path.join(safe, name)
+            full = safe_path / name
             try:
-                if os.path.islink(full):
+                if full.is_symlink():
                     target = os.readlink(full)
-                    abs_target = target if os.path.isabs(target) else os.path.join(safe, target)
+                    abs_target = target if Path(target).is_absolute() else str(safe_path / target)
                     try:
                         _resolve_safe(abs_target, root_path)
                         lines.append(f"{name} -> {target}")
                     except ValueError:
                         lines.append(f"{name} -> <outside root>")
-                elif os.path.isdir(full):
+                elif full.is_dir():
                     lines.append(f"{name}/")
                 else:
-                    size = os.path.getsize(full)
+                    size = full.stat().st_size
                     lines.append(f"{name} ({_fmt_size(size)})")
             except OSError:
                 lines.append(f"{name} (?)")

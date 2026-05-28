@@ -5,12 +5,8 @@ Requires the ``web`` extra: ``pip install minimal-agent[web]``
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from ._tool import ToolInfo, _infer_parameters
-
-if TYPE_CHECKING:
-    pass
+from ._tool import ToolInfo
+from .tools._shared import _make_tool_info
 
 
 def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
@@ -102,11 +98,4 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
             return f"Error: {exc}"
         return result.content
 
-    def _info(fn, **overrides) -> ToolInfo:
-        name = overrides.pop("name", fn.__name__)
-        desc = overrides.pop("description", (fn.__doc__ or "").strip())
-        params = _infer_parameters(fn)
-        params.update(overrides.pop("parameters", {}))
-        return ToolInfo(name=name, description=desc, parameters=params, fn=fn)
-
-    return [_info(web_search), _info(web_fetch)]
+    return [_make_tool_info(web_search), _make_tool_info(web_fetch)]

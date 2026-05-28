@@ -59,7 +59,7 @@ def make_search_tool(root: str, *, max_chars: int = 20_000, search_timeout: floa
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.communicate()
-                return "Error: search timed out after 30 seconds"
+                return f"Error: search timed out after {search_timeout} seconds"
         except FileNotFoundError:
             return "Error: 'rg' (ripgrep) not found on PATH"
         except OSError as exc:
@@ -73,11 +73,11 @@ def make_search_tool(root: str, *, max_chars: int = 20_000, search_timeout: floa
 
         output = stdout.decode("utf-8", errors="replace")
         if len(output) > max_chars:
+            total_chars = len(output)
             output = output[:max_chars]
             last_newline = output.rfind("\n")
             if last_newline > 0:
                 output = output[: last_newline + 1]
-            total_chars = len(stdout.decode("utf-8", errors="replace"))
             output += f"\n... (truncated — showing {max_chars} of {total_chars} characters)"
         return output
 
