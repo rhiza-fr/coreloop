@@ -1,0 +1,40 @@
+[defaults]
+provider = "openai"
+model = "gpt-4o-mini"
+
+# These can be set as defaults or per provider
+#
+# system = "You are a helpful assistant."
+# tools = ["read", "edit", "ls", "search"]
+# think = false
+# extra = {"reasoning_effort": "medium"}
+# max_turns = 20
+# max_messages = 0
+# searxng_url = "http://localhost:8888"
+
+[providers.openai]
+base_url = "https://api.openai.com/v1"
+env_key_name = "OPENAI_API_KEY"
+
+[providers.ollama]
+base_url = "http://localhost:11434/v1"
+
+[providers.together]
+base_url = "https://api.together.xyz/v1"
+env_key_name = "TOGETHER_API_KEY"
+
+[providers.groq]
+base_url = "https://api.groq.com/openai/v1"
+env_key_name = "GROQ_API_KEY"
+
+[providers.anthropic]
+base_url = "https://api.anthropic.com/v1"
+env_key_name = "ANTHROPIC_API_KEY"
+
+[providers.openrouter]
+base_url = "https://openrouter.ai/api/v1"
+env_key_name = "OPENROUTER_API_KEY"
+
+[providers.deepseek]
+base_url = "https://api.deepseek.com/v1"
+env_key_name = "DEEPSEEK_API_KEY"

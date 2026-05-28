@@ -42,7 +42,7 @@ The library is a minimal, dependency-light agent loop built on top of any OpenAI
 
 **`_types.py`** — Pydantic models: `Message`, `ToolCall`, `FunctionCall`, `Usage`. These mirror the OpenAI chat format closely. `Message.reasoning` is a streaming-only field (for thinking models like DeepSeek/Qwen3) that is deliberately excluded when messages are sent back to the API.
 
-**`_provider.py`** — Reads `providers.toml` at the repo root to resolve `base_url` and API key env var per provider name. Providers: `openai`, `ollama`, `together`, `groq`, `anthropic`, `openrouter`, `deepseek`.
+**`_provider.py`** — Reads `.ma-config.toml` (env var > `~/.ma-config.toml` > package-local > repo root) to resolve defaults (`[defaults]`) and providers (`[providers.<name>]`). Providers: `openai`, `ollama`, `together`, `groq`, `anthropic`, `openrouter`, `deepseek`.
 
 **`_client.py`** — `stream_chat()`: a raw `httpx`-based SSE streaming client that yields progressively built `Message` objects. Handles both text content and incremental tool-call assembly (stitching together streamed `tool_calls` deltas by index).
 
@@ -67,4 +67,4 @@ When both exist, per-agent tools take name-priority over global ones.
 
 ### Provider configuration
 
-`providers.toml` is read at `_provider.py`'s module level (`Path(__file__).parent.parent.parent / "providers.toml"`), so it must stay at the repo root. The `ollama` provider has no `env_key_name` (no auth required). All others read their key from the environment variable named in `env_key_name`.
+`.ma-config.toml` uses two top-level sections: ``[defaults]`` (provider, model, tools) and ``[providers.<name>]`` (base_url, env_key_name). Read by ``_provider.py`` with priority ``$MA_CONFIG_PATH`` > ``~/.ma-config.toml`` > package-local > repo root. The `ollama` provider has no `env_key_name` (no auth required). All others read their key from the environment variable named in `env_key_name`.
