@@ -9,7 +9,6 @@ model = "gpt-4o-mini"
 # think = false
 # extra = {"reasoning_effort": "medium"}
 # max_turns = 20
-# max_messages = 0
 # searxng_url = "http://localhost:8888"
 
 [providers.openai]

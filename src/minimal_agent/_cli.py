@@ -12,11 +12,11 @@ from rich.console import Console
 
 from .agent import Agent
 from .hooks import AgentHooks
-from ._builtin_tools import make_tools
 from ._config import DefaultConfig, config_path, resolve_defaults, resolve_model_config
 from ._logging import setup_logging
 from .tool import ToolInfo
-from ._web_tools import make_web_tools
+from .tools import make_tools
+from .web_tools import make_web_tools
 from .types import Message
 
 _DEFAULTS = resolve_defaults()
@@ -147,10 +147,6 @@ def main(
     max_turns: Optional[int] = typer.Option(
         None, "--max-turns", "-n", help="Maximum agent loop iterations"
     ),
-    max_messages: Optional[int] = typer.Option(
-        None, "--max-messages", "-M",
-        help="Stop after N yielded messages (0 = unlimited)",
-    ),
     think: Optional[bool] = typer.Option(
         None, "--think/--no-think",
         help="Enable (medium) or disable (none) reasoning_effort",
@@ -195,8 +191,6 @@ def main(
         extra = json.dumps(cfg.extra)
     if max_turns is None:
         max_turns = cfg.max_turns
-    if max_messages is None:
-        max_messages = cfg.max_messages
     if searxng_url is None and cfg.searxng_url:
         searxng_url = cfg.searxng_url
     resolved_timeout: float = timeout if timeout is not None else cfg.llm_timeout
@@ -214,7 +208,6 @@ def main(
             tools=tools,
             timeout=resolved_timeout,
             hooks=_MaxTurnsHook(max_turns),
-            max_messages=max_messages,
             extra_body=extra_body,
         )
     except KeyError as exc:
@@ -239,7 +232,7 @@ def main(
     else:
         try:
             asyncio.run(_repl(agent, model, provider, root, tools_opt, searxng_url,
-                              system, resolved_timeout, max_turns, max_messages, extra_body, cfg))
+                              system, resolved_timeout, max_turns, extra_body, cfg))
         except httpx.HTTPStatusError as exc:
             typer.echo(f"Error: {exc.response.status_code} from {exc.request.url}", err=True)
             body = exc.response.text[:_HTTP_ERROR_BODY_PREVIEW]
@@ -277,7 +270,6 @@ async def _repl(
     system: str | None,
     timeout: float,
     max_turns: int,
-    max_messages: int,
     extra_body: dict | None,
     cfg: DefaultConfig | None = None,
 ) -> None:
@@ -323,7 +315,6 @@ async def _repl(
                     tools=new_tools,
                     timeout=timeout,
                     hooks=_MaxTurnsHook(max_turns),
-                    max_messages=max_messages,
                     extra_body=extra_body,
                 )
                 _console.print(f"Root changed to {Path(new_root).resolve()}", style="green")
@@ -331,7 +322,7 @@ async def _repl(
         if not user_input.strip():
             continue
 
-        messages = list(state["agent"].conversation) + [Message(role="user", content=user_input)]
+        messages = list(state["agent"].messages) + [Message(role="user", content=user_input)]
         typer.echo()
 
         async for msg in state["agent"].run(messages):

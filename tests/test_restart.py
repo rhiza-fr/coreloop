@@ -13,26 +13,26 @@ import pytest
 def test_conversation_empty_before_run():
     """Before any run() call, conversation is an empty list."""
     agent = Agent(model="qwen3.5:9b", provider="ollama")
-    assert agent.conversation == []
+    assert agent.messages == []
 
 
 @pytest.mark.slow
 def test_conversation_is_a_copy():
-    """agent.conversation returns a new list each time (defensive copy)."""
+    """agent.messages returns a new list each time (defensive copy)."""
     agent = Agent(model="qwen3.5:9b", provider="ollama")
-    agent._conversation = [
+    agent._messages = [
         Message(role="user", content="hi"),
         Message(role="assistant", content="hello"),
     ]
 
-    c1 = agent.conversation
-    c2 = agent.conversation
+    c1 = agent.messages
+    c2 = agent.messages
 
     assert c1 == c2
     assert c1 is not c2  # different objects
 
     c1.append(Message(role="user", content="extra"))
-    assert len(agent.conversation) == 2  # original unchanged
+    assert len(agent.messages) == 2  # original unchanged
 
 
 @pytest.mark.slow
@@ -45,7 +45,6 @@ def test_public_attrs_are_readable():
         system="You are helpful.",
         timeout=30.0,
         hooks=hooks,
-        max_messages=5,
         extra_body={"thinking": {"type": "disabled"}},
     )
 
@@ -54,7 +53,6 @@ def test_public_attrs_are_readable():
     assert agent.system == "You are helpful."
     assert agent.timeout == 30.0
     assert agent.hooks is hooks
-    assert agent.max_messages == 5
     assert agent.extra_body == {"thinking": {"type": "disabled"}}
 
     # Mutate and re-check
@@ -82,7 +80,7 @@ def test_stop_resets_between_runs():
 
 @pytest.mark.slow
 def test_conversation_contains_system_message():
-    """Agent prepends the system message to _conversation during run()."""
+    """Agent prepends the system message to _messages during run()."""
     agent = Agent(
         model="qwen3.5:9b", provider="ollama",
         system="You are a bot.",
@@ -90,13 +88,13 @@ def test_conversation_contains_system_message():
 
     # Simulate what run() does internally
     agent._stop_event.clear()
-    agent._conversation = [Message(role="user", content="Hi")]
+    agent._messages = [Message(role="user", content="Hi")]
     if agent.system:
-        agent._conversation.insert(
+        agent._messages.insert(
             0, Message(role="system", content=agent.system)
         )
 
-    conv = agent.conversation
+    conv = agent.messages
     assert len(conv) == 2
     assert conv[0].role == "system"
     assert conv[0].content == "You are a bot."
@@ -113,5 +111,5 @@ def test_restart_docstring_pattern():
 
     # conversation can be passed to a new run
     conv = [Message(role="user", content="hello")]
-    agent._conversation = list(conv)
-    assert agent.conversation == conv
+    agent._messages = list(conv)
+    assert agent.messages == conv

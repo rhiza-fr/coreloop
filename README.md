@@ -1,14 +1,14 @@
 # minimal-agent
 
-A minimal, dependency-light LLM agent loop built on any OpenAI-compatible API.
+Provides a lightweight async tool-calling agent core, fully interruptable and observable.
+Usable as library - core AsyncIterator[Message], hooks, logging.
+Any OpenAI-compatible API via httpx
+Minimal REPL
+Configurable tools: read, edit, ls, search
+web_search and web_fetch via the [web] extra.
 
-This is not meant to compete with pi, claude, opencode etc.
+No MCP, no SKILLS
 
-I wanted a very light tool-capable agent loop that is interuptable and inspectable, with minimal overhead.
-
-The repl is functional but intentionally weak.
-
-TODO explain how to use agent loop as an iterator.
 
 ## Install
 
@@ -50,7 +50,6 @@ ma -p "Solve this step by step" --think
 | `--searxng-url` | `$SEARXNG_URL` | SearXNG base URL for web tools |
 | `-t, --timeout` | `60.0` | Timeout in seconds for LLM and tool calls |
 | `-n, --max-turns` | `20` | Maximum agent loop iterations |
-| `-M, --max-messages` | `0` (unlimited) | Stop after N yielded messages |
 | `--think/--no-think` | off | Enable (`medium`) or disable (`none`) reasoning_effort |
 | `-e, --extra` | — | Extra JSON body params merged into the API request |
 | `--json` | off | Output all messages as JSONL |
@@ -173,8 +172,8 @@ async for msg in agent.run([Message(role="user", content="List the files here, t
     if msg.content:
         print(msg.content)
 
-# Full conversation history available after run
-print(agent.conversation)
+# Full message history available after run
+print(agent.messages)
 ```
 
 ### `Agent`
@@ -186,23 +185,25 @@ Agent(
     system: str | None = None,
     tools: list[ToolInfo] | None = None,   # per-agent (takes priority over global)
     timeout: float = 60.0,
-    max_turns: int = 20,
-    max_messages: int = 0,
+    hooks: AgentHooks | None = None,
     extra_body: dict | None = None,
     cache_dir: Path | str | None = "~/.cache/minimal-agent",  # None disables caching
 )
 ```
 
+The agent core has no built-in turn limit. To bound a run, attach a hook that calls `agent.stop()` — see `MaxTurnsHook` in `examples/hooks.py` (this is how the CLI's `--max-turns` is implemented).
+
 `agent.run(messages)` is an async generator that yields `Message` objects as they stream. It accepts an optional `usage` keyword argument — a mutable `Usage` object that cumulative token counts are added to after each LLM turn (requires provider support).
 
 | Method | Description |
 |--------|-------------|
-| `stop()` | Cancel the current run immediately (sets stop flag + cancels task) |
-| `stop_after_turn()` | Graceful stop: finish the current tool execution, then exit the loop |
-| `reset()` | Clear conversation history and reset the stop flag |
-| `conversation` (property) | Shallow copy of the full chat history from the last `run()` |
+| `stop()` | Finish the current turn cleanly, then exit the loop. Safe to call from a tool or hook; `on_after_agent` still fires. |
+| `abort()` | Halt immediately, abandoning in-flight tools. `on_after_agent` is **not** called. |
+| `reset()` | Clear message history and reset the stop flag |
+| `stopped` (property) | Whether `stop()` or `abort()` has been called |
+| `messages` (property) | Shallow copy of the full chat history from the last `run()` |
 
-**Restart pattern** — pass `agent.conversation` to a second `run()` to keep history:
+**Restart pattern** — pass `agent.messages` to a second `run()` to keep history:
 
 ```python
 async for msg in agent.run([Message(role="user", content="Hi")]):
@@ -210,7 +211,7 @@ async for msg in agent.run([Message(role="user", content="Hi")]):
 
 # Restart with a different model, keeping the conversation
 agent.model = "better-model"
-async for msg in agent.run(agent.conversation):
+async for msg in agent.run(agent.messages):
     ...
 ```
 
@@ -262,6 +263,7 @@ class FunctionCall(BaseModel):
 class Usage(BaseModel):
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    total_tokens: int = 0
 ```
 
 ### Custom tools
@@ -299,9 +301,9 @@ clear_registry()  # remove all registered tools (useful in tests)
 
 ### Caching
 
-LLM responses are disk-cached by default (in `~/.cache/minimal-agent/`) to avoid re-sending identical requests. Pass `cache_dir=None` to `Agent(...)` to disable.
+LLM responses are disk-cached by default (in `~/.cache/minimal-agent/`) to avoid re-sending identical requests. Use `cache_dir` to choose a location, or `cache_dir=None` to disable:
 
 ```python
-from minimal_agent import make_cache
-cache = make_cache("/tmp/my-cache")
+agent = Agent(model="...", cache_dir="/tmp/my-cache")  # custom location
+agent = Agent(model="...", cache_dir=None)             # caching disabled
 ```

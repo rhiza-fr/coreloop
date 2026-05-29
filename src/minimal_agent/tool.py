@@ -158,18 +158,3 @@ def get_tool(name: str) -> ToolInfo | None:
 def list_tools() -> list[ToolInfo]:
     """Return all registered tools."""
     return list(_TOOL_REGISTRY.values())
-
-
-def openai_tool_schemas() -> list[dict[str, Any]]:
-    """Return tool definitions in OpenAI ``tools`` API format."""
-    result: list[dict[str, Any]] = []
-    for info in _TOOL_REGISTRY.values():
-        result.append({
-            "type": "function",
-            "function": {
-                "name": info.name,
-                "description": info.description,
-                "parameters": info.parameters,
-            },
-        })
-    return result

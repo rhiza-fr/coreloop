@@ -138,7 +138,7 @@ class LoggingHook(AgentHooks):
         self._log.debug("on_before_agent: model=%s provider=%s", agent.model, agent.provider)
 
     async def on_after_agent(self, agent: Agent) -> None:
-        self._log.debug("on_after_agent: %d messages in history", len(agent.conversation))
+        self._log.debug("on_after_agent: %d messages in history", len(agent.messages))
 
     async def on_before_turn(self, agent: Agent) -> None:
         self._log.debug("on_before_turn")
@@ -147,7 +147,7 @@ class LoggingHook(AgentHooks):
         self._log.debug("on_after_turn")
 
     async def on_before_llm(self, agent: Agent) -> Message | None:
-        self._log.debug("on_before_llm: sending %d messages", len(agent.conversation))
+        self._log.debug("on_before_llm: sending %d messages", len(agent.messages))
         return None
 
     async def on_after_llm(self, agent: Agent, message: Message) -> Message | None:

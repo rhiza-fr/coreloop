@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from minimal_agent import Agent, Message, tool
-from minimal_agent.agent import _dump_messages
+from minimal_agent.types import _dump_messages
 from minimal_agent._client import stream_chat
 
 
@@ -136,27 +136,19 @@ def test_agent_construct():
     assert agent.stopped
 
 
-@pytest.mark.slow
 @pytest.mark.asyncio
-async def test_agent_with_tool():
-    """Agent executes a tool when the LLM requests one, then continues."""
+async def test_registered_tool_executes():
+    """A globally registered @tool is looked up by name and run via run_tool."""
+    from minimal_agent.tool import get_tool
+    from minimal_agent._execution import run_tool
+
     @tool(allow_override=True)
     async def read(path: str) -> str:
         return f"contents of {path}"
 
-    agent = Agent(model="qwen3.5:9b", provider="ollama")
-    # Monkey-patch the internal client creation by overriding provider config
-    agent._provider_config.base_url = "http://test"
-    agent._provider_config.api_key = None
-
-    # Hack: we need to inject our client into stream_chat calls.
-    # For a proper test, we'd refactor Agent to accept a client.
-    # For now, let's test the tool execution path directly.
-    from minimal_agent.tool import get_tool
-
     info = get_tool("read")
     assert info is not None
-    result = await agent._run_tool(info, {"path": "foo.txt"})
+    result = await run_tool(info, {"path": "foo.txt"}, timeout=5.0)
     assert result == "contents of foo.txt"
 
 

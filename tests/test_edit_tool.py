@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from minimal_agent._builtin_tools import _character_line, _find_occurrence_near_line, make_tools
+from minimal_agent.tools import make_tools
+from minimal_agent.tools.edit import _character_line, _find_occurrence_near_line
 
 
 # ── Fixture ───────────────────────────────────────────────────

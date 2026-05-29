@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from minimal_agent._builtin_tools import make_tools, _resolve_safe
+from minimal_agent.tools import make_tools
+from minimal_agent.tools._shared import _resolve_safe
 
 
 # ── Fixtures ──────────────────────────────────────────────────

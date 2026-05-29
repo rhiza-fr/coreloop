@@ -18,8 +18,8 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
         own default if ``None``.
     """
     try:
-        from pvlwebtools import web_fetch as _web_fetch  # type: ignore
-        from pvlwebtools import web_search as _web_search  # type: ignore
+        from pvlwebtools import web_fetch as _web_fetch
+        from pvlwebtools import web_search as _web_search
     except ImportError as exc:
         raise ImportError(
             "Web tools require 'pvl-webtools'. "

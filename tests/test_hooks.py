@@ -156,7 +156,7 @@ async def test_on_after_llm_replaces_history():
     async for _ in agent.run([Message(role="user", content="hi")]):
         pass
 
-    assistant_msgs = [m for m in agent.conversation if m.role == "assistant"]
+    assistant_msgs = [m for m in agent.messages if m.role == "assistant"]
     assert any(m.content == "replaced" for m in assistant_msgs)
     assert not any(m.content == "original" for m in assistant_msgs)
 
@@ -185,7 +185,7 @@ async def test_on_before_tool_injection_skips_real_tool():
     assert not executed
     assert "before_tool:t" in hook.calls
     assert "after_tool:t" in hook.calls
-    tool_results = [m for m in agent.conversation if m.role == "tool"]
+    tool_results = [m for m in agent.messages if m.role == "tool"]
     assert any(m.content == "injected" for m in tool_results)
 
 

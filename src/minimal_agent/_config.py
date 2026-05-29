@@ -78,7 +78,6 @@ class DefaultConfig:
     think: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
     max_turns: int = 20
-    max_messages: int = 0
     searxng_url: str | None = None
     llm_timeout: float = 60.0
     tool_read_max_lines: int = 100
@@ -118,7 +117,6 @@ def _entry_to_config(entry: dict[str, Any]) -> DefaultConfig:
         think=entry.get("think", False),
         extra=entry.get("extra", {}),
         max_turns=entry.get("max_turns", 20),
-        max_messages=entry.get("max_messages", 0),
         searxng_url=entry.get("searxng_url"),
         llm_timeout=entry.get("llm_timeout", 60.0),
         tool_read_max_lines=entry.get("tool_read_max_lines", 100),
@@ -137,7 +135,6 @@ def _apply_overrides(base: DefaultConfig, overrides: dict[str, Any]) -> DefaultC
         think=overrides.get("think", base.think),
         extra=overrides.get("extra", base.extra),
         max_turns=overrides.get("max_turns", base.max_turns),
-        max_messages=overrides.get("max_messages", base.max_messages),
         searxng_url=overrides.get("searxng_url", base.searxng_url),
         llm_timeout=overrides.get("llm_timeout", base.llm_timeout),
         tool_read_max_lines=overrides.get("tool_read_max_lines", base.tool_read_max_lines),

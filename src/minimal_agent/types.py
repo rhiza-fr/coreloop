@@ -57,3 +57,30 @@ class Usage(BaseModel):
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+
+
+def _dump_messages(messages: list[Message]) -> list[dict]:
+    """Serialize messages to the dict format the API expects."""
+    result: list[dict] = []
+    for m in messages:
+        d: dict = {"role": m.role}
+        if m.content is not None:
+            d["content"] = m.content
+        if m.tool_calls:
+            d["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": tc.type,
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
+                }
+                for tc in m.tool_calls
+            ]
+        if m.tool_call_id is not None:
+            d["tool_call_id"] = m.tool_call_id
+        if m.name is not None:
+            d["name"] = m.name
+        result.append(d)
+    return result

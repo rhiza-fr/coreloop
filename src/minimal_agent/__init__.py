@@ -1,11 +1,10 @@
 """minimal-agent: a minimal LLM agent with tool-calling support."""
 
 from .agent import Agent
-from ._builtin_tools import make_tools
-from ._cache import make_cache
+from .tools import make_tools
 from .hooks import AgentHooks
 from .tool import ToolInfo, clear_registry, tool
-from ._web_tools import make_web_tools
+from .web_tools import make_web_tools
 from .types import FunctionCall, Message, ToolCall, Usage
 
 __all__ = [
@@ -17,7 +16,6 @@ __all__ = [
     "ToolInfo",
     "Usage",
     "clear_registry",
-    "make_cache",
     "make_tools",
     "make_web_tools",
     "tool",
