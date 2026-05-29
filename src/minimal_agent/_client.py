@@ -1,15 +1,16 @@
 """HTTP client for OpenAI-compatible chat completion endpoints with SSE streaming."""
 
-from __future__ import annotations
-
 import json
+import logging
 import time
 from typing import Any, AsyncIterator
 
 import httpx
 
 from ._cache import request_key
-from ._types import Message, ToolCall, FunctionCall, Usage
+from .types import Message, ToolCall, FunctionCall, Usage
+
+logger = logging.getLogger(__name__)
 
 
 _CHAT_PATH = "/chat/completions"
@@ -39,6 +40,7 @@ async def stream_chat(
         cache_key = request_key(model, messages, tools, extra_body)
         cached = cache.get(cache_key)
         if cached is not None:
+            logger.debug("Cache hit for model=%s messages=%d", model, len(messages))
             yield Message.model_validate_json(cached)
             return
 
@@ -77,6 +79,7 @@ async def stream_chat(
     _owned = client is None
     _session = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout))
     _t0 = time.perf_counter()
+    logger.debug("POST %s model=%s messages=%d", url, model, len(messages))
     try:
         async with _session.stream("POST", url, headers=headers, json=body) as resp:
             if resp.status_code >= 400:
@@ -178,6 +181,12 @@ async def stream_chat(
 
         # Yield the final message after [DONE] so usage is populated
         _duration = time.perf_counter() - _t0
+        logger.debug(
+            "Response from %s in %.2fs — usage: %s",
+            model,
+            _duration,
+            captured_usage,
+        )
         final_message = (
             pending_message.model_copy(update={"usage": captured_usage, "duration": _duration})
             if pending_message is not None

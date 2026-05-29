@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 import os
 import tempfile
 from pathlib import Path
 
-from .._tool import ToolInfo
+from ..tool import ToolInfo
 from ._shared import _resolve_safe_strict, _fmt_size, _make_tool_info
 
 _MAX_EDIT_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -61,9 +59,6 @@ def make_edit_tool(root: str) -> ToolInfo:
         except ValueError as exc:
             return f"Error: {exc}"
 
-        if not old_text:
-            return "Error: old_text must be a non-empty string"
-
         try:
             file_size = Path(safe).stat().st_size
         except OSError as exc:
@@ -83,26 +78,32 @@ def make_edit_tool(root: str) -> ToolInfo:
         except OSError as exc:
             return f"Error: cannot read {path!r}: {exc}"
 
-        if old_text not in content:
-            return f"Error: old_text not found in {path!r}"
+        if not old_text:
+            if content:
+                return "Error: old_text must be a non-empty string (file is not empty)"
+            # empty old_text on an empty file: write new_text as the full content
+            idx = 0
+        else:
+            if old_text not in content:
+                return f"Error: old_text not found in {path!r}"
 
-        count = content.count(old_text)
+            count = content.count(old_text)
 
-        if count == 1:
-            idx = content.find(old_text)
-        elif line_hint is not None:
-            idx = _find_occurrence_near_line(content, old_text, line_hint)
-            if idx < 0:
+            if count == 1:
+                idx = content.find(old_text)
+            elif line_hint is not None:
+                idx = _find_occurrence_near_line(content, old_text, line_hint)
+                if idx < 0:
+                    return (
+                        f"Error: old_text {old_text!r} appears {count} times in "
+                        f"{path!r} but none are on line {line_hint}"
+                    )
+            else:
                 return (
                     f"Error: old_text {old_text!r} appears {count} times in "
-                    f"{path!r} but none are on line {line_hint}"
+                    f"{path!r}. Provide line_hint to specify which occurrence "
+                    f"to replace."
                 )
-        else:
-            return (
-                f"Error: old_text {old_text!r} appears {count} times in "
-                f"{path!r}. Provide line_hint to specify which occurrence "
-                f"to replace."
-            )
 
         new_content = content[:idx] + new_text + content[idx + len(old_text):]
 

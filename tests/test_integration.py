@@ -1,14 +1,12 @@
 """Integration tests using httpx.MockTransport to simulate the API."""
 
-from __future__ import annotations
-
 import json
 
 import httpx
 import pytest
 
 from minimal_agent import Agent, Message, tool
-from minimal_agent._agent import _dump_messages
+from minimal_agent.agent import _dump_messages
 from minimal_agent._client import stream_chat
 
 
@@ -154,15 +152,11 @@ async def test_agent_with_tool():
     # Hack: we need to inject our client into stream_chat calls.
     # For a proper test, we'd refactor Agent to accept a client.
     # For now, let's test the tool execution path directly.
-    from minimal_agent._types import ToolCall, FunctionCall
-    from minimal_agent._tool import get_tool
+    from minimal_agent.tool import get_tool
 
     info = get_tool("read")
     assert info is not None
-    result = await agent._run_tool(info, ToolCall(
-        id="call_1",
-        function=FunctionCall(name="read", arguments='{"path":"foo.txt"}'),
-    ))
+    result = await agent._run_tool(info, {"path": "foo.txt"})
     assert result == "contents of foo.txt"
 
 

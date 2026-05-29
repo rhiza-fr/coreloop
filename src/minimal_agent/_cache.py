@@ -1,7 +1,5 @@
 """Disk-based cache for LLM responses, keyed by a hash of the request."""
 
-from __future__ import annotations
-
 import hashlib
 import json
 from pathlib import Path

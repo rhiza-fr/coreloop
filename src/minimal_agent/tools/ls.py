@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import os
 from pathlib import Path
 
-from .._tool import ToolInfo
+from ..tool import ToolInfo
 from ._shared import _resolve_safe, _resolve_safe_strict, _fmt_size, _make_tool_info
 
 _MAX_LS_ENTRIES = 500

@@ -1,7 +1,5 @@
 """Typer-based CLI for ``ma``."""
 
-from __future__ import annotations
-
 import asyncio
 import json
 import os
@@ -12,17 +10,30 @@ import httpx
 import typer
 from rich.console import Console
 
-from ._agent import Agent
+from .agent import Agent
+from .hooks import AgentHooks
 from ._builtin_tools import make_tools
 from ._config import DefaultConfig, config_path, resolve_defaults, resolve_model_config
-from ._tool import ToolInfo
+from ._logging import setup_logging
+from .tool import ToolInfo
 from ._web_tools import make_web_tools
-from ._types import Message
+from .types import Message
 
 _DEFAULTS = resolve_defaults()
 _console = Console()
 _HTTP_ERROR_BODY_PREVIEW = 500
 _TOOL_RESULT_PREVIEW = 300
+
+
+class _MaxTurnsHook(AgentHooks):
+    def __init__(self, n: int) -> None:
+        self._n = n
+        self._turns = 0
+
+    async def on_after_turn(self, agent: Agent) -> None:
+        self._turns += 1
+        if self._turns >= self._n:
+            agent.stop()
 
 app = typer.Typer(
     name="ma",
@@ -151,6 +162,11 @@ def main(
     json_out: bool = typer.Option(
         False, "--json", help="Output all non-partial messages as JSONL (one JSON object per line)"
     ),
+    log_level: Optional[str] = typer.Option(
+        None, "--log-level", "-l",
+        help="Logging level: DEBUG, INFO, WARNING, ERROR (default: no logging)",
+        metavar="LEVEL",
+    ),
     _version: bool = typer.Option(
         False, "--version", "-V", callback=_version_callback, is_eager=True,
         help="Show version and exit",
@@ -159,6 +175,9 @@ def main(
     """Start an interactive REPL, or run once with -p PROMPT."""
     if ctx.invoked_subcommand is not None:
         return
+
+    if log_level is not None:
+        setup_logging(log_level.upper())
 
     _ensure_home_config()
 
@@ -194,7 +213,7 @@ def main(
             system=system,
             tools=tools,
             timeout=resolved_timeout,
-            max_turns=max_turns,
+            hooks=_MaxTurnsHook(max_turns),
             max_messages=max_messages,
             extra_body=extra_body,
         )
@@ -303,7 +322,7 @@ async def _repl(
                     system=system,
                     tools=new_tools,
                     timeout=timeout,
-                    max_turns=max_turns,
+                    hooks=_MaxTurnsHook(max_turns),
                     max_messages=max_messages,
                     extra_body=extra_body,
                 )

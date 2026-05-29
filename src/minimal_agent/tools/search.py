@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import asyncio
 from pathlib import Path
 
-from .._tool import ToolInfo
+from ..tool import ToolInfo
 from ._shared import _resolve_safe_strict, _make_tool_info
 
 def make_search_tool(root: str, *, max_chars: int = 20_000, search_timeout: float = 30.0) -> ToolInfo:

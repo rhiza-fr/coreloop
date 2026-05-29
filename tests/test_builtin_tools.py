@@ -1,7 +1,5 @@
 """Tests for the built-in file tools (read, ls, edit) and path traversal."""
 
-from __future__ import annotations
-
 import os
 import tempfile
 from pathlib import Path

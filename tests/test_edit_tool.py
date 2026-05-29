@@ -4,8 +4,6 @@ Tests single-replacement-only semantics, line_hint disambiguation,
 empty/error cases, special characters, concurrency, and large files.
 """
 
-from __future__ import annotations
-
 import os
 import tempfile
 from pathlib import Path

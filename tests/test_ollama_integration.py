@@ -9,8 +9,6 @@ Those tests are best-effort but do not fail when a model only replies
 with text; they log diagnostics instead.
 """
 
-from __future__ import annotations
-
 import tempfile
 from pathlib import Path
 
@@ -61,7 +59,6 @@ def agent(sandbox):
         system="You are a helpful assistant with file tools: read, ls, edit.",
         tools=tools,
         timeout=TIMEOUT,
-        max_turns=6,
     )
 
 

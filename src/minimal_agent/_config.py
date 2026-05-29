@@ -1,7 +1,5 @@
 """Configuration loaded from .ma-config.toml: defaults, model overrides, and providers."""
 
-from __future__ import annotations
-
 import functools
 import os
 import tomllib

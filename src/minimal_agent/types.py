@@ -1,7 +1,5 @@
 """Message and tool-call type models matching OpenAI's chat format."""
 
-from __future__ import annotations
-
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field

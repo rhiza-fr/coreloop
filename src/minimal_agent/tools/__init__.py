@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import os
 from pathlib import Path
 
-from .._tool import ToolInfo
+from ..tool import ToolInfo
 from .edit import make_edit_tool
 from .ls import make_ls_tool
 from .read import make_read_tool

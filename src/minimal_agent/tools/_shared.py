@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import os
 from pathlib import Path
 
-from .._tool import ToolInfo, _infer_parameters
+from ..tool import ToolInfo, _infer_parameters
 
 _MAX_READ_BYTES = 10 * 1024 * 1024  # 10 MB
 

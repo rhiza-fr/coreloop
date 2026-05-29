@@ -1,9 +1,8 @@
 """The Agent — orchestrates the LLM loop with tool execution."""
 
-from __future__ import annotations
-
 import asyncio
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any, AsyncIterator
@@ -11,8 +10,11 @@ from typing import Any, AsyncIterator
 from ._cache import make_cache
 from ._client import stream_chat
 from ._config import resolve_provider
-from ._tool import ToolInfo, list_tools
-from ._types import Message, ToolCall, Usage
+from .hooks import AgentHooks, _safe_hook
+from .tool import ToolInfo, list_tools
+from .types import Message, ToolCall, Usage
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_CACHE_DIR = Path.home() / ".cache" / "minimal-agent"
 
@@ -49,7 +51,7 @@ class Agent:
         system: str | None = None,
         tools: list[ToolInfo] | None = None,
         timeout: float = 60.0,
-        max_turns: int = 20,
+        hooks: AgentHooks | None = None,
         max_messages: int = 0,
         extra_body: dict[str, Any] | None = None,
         cache_dir: Path | str | None = _DEFAULT_CACHE_DIR,
@@ -59,7 +61,7 @@ class Agent:
         self.provider = provider
         self.system = system
         self.timeout = timeout
-        self.max_turns = max_turns
+        self.hooks = hooks if hooks is not None else AgentHooks()
         self.max_messages = max_messages
         self.extra_body = extra_body
         self._cache = make_cache(cache_dir) if cache_dir is not None else None
@@ -83,6 +85,7 @@ class Agent:
         # Interrupt support
         self._stop_event = asyncio.Event()
         self._current_task: asyncio.Task[None] | None = None
+        self._aborted = False
 
     # ── public API ──────────────────────────────────────────────
 
@@ -95,33 +98,39 @@ class Agent:
         """
         return list(self._conversation)
 
+    @property
+    def messages(self) -> list[Message]:
+        """Alias for ``conversation`` — available inside hook callbacks."""
+        return list(self._conversation)
+
     def reset(self) -> None:
         """Clear conversation history and reset the stop flag."""
         self._conversation.clear()
         self._stop_event.clear()
 
     def stop(self) -> None:
-        """Signal the agent to stop as soon as possible.
+        """Signal the agent to finish the current turn and stop cleanly.
 
-        Sets the stop flag and cancels the current ``run()`` task (if any),
-        which will interrupt any in-flight LLM call or tool execution.
+        Safe to call from inside a tool or hook — sets the stop flag without
+        cancelling the task, so the current turn completes normally and
+        ``on_after_agent`` is called before the loop exits.
         """
+        self._stop_event.set()
+
+    def abort(self) -> None:
+        """Halt immediately, abandoning in-flight tools.
+
+        Cancels the current task. ``on_after_agent`` is NOT called. Use ``stop()``
+        for a clean exit.
+        """
+        self._aborted = True
         self._stop_event.set()
         if self._current_task is not None and not self._current_task.done():
             self._current_task.cancel()
 
-    def stop_after_turn(self) -> None:
-        """Signal the agent to stop after the current turn completes.
-
-        Safe to call from inside a tool — sets the stop flag without
-        cancelling the task, so the tool result is collected normally and
-        the loop exits cleanly before the next LLM call.
-        """
-        self._stop_event.set()
-
     @property
     def stopped(self) -> bool:
-        """Whether stop() has been called."""
+        """Whether stop() or abort() has been called."""
         return self._stop_event.is_set()
 
     async def run(
@@ -164,6 +173,7 @@ class Agent:
             added to it after each LLM turn (requires provider support).
         """
         self._stop_event.clear()
+        self._aborted = False
         self._current_task = asyncio.current_task()
         self._conversation = list(messages)
 
@@ -176,23 +186,13 @@ class Agent:
                 0, Message(role="system", content=self.system)
             )
 
-        turns = 0
         self._complete_yielded = 0
         self._max_messages_reached = False
+        logger.debug("Agent.run starting: model=%s provider=%s", self.model, self.provider)
+        await _safe_hook(self.hooks, "on_before_agent", self)
         try:
             while not self._stop_event.is_set():
-                if turns >= self.max_turns:
-                    yield Message(
-                        role="assistant",
-                        content=(
-                            f"[Agent stopped: reached max turns "
-                            f"({self.max_turns})]"
-                        ),
-                        model=self.model,
-                    )
-                    return
-                turns += 1
-
+                await _safe_hook(self.hooks, "on_before_turn", self)
                 # ── 1. LLM call ──────────────────────────────────
                 async for msg in self._stream_llm_response(usage):
                     yield msg
@@ -208,8 +208,15 @@ class Agent:
                 self._conversation.append(assistant_msg)
 
                 if not assistant_msg.tool_calls:
-                    return  # normal completion — no tools requested
+                    logger.debug("LLM finished without tool calls")
+                    await _safe_hook(self.hooks, "on_after_turn", self)
+                    return
 
+                logger.debug(
+                    "LLM requested %d tool call(s): %s",
+                    len(assistant_msg.tool_calls),
+                    [tc.function.name for tc in assistant_msg.tool_calls],
+                )
                 results = await asyncio.gather(
                     *[
                         self._exec_single_tool(tc)
@@ -221,7 +228,17 @@ class Agent:
                     yield msg
                 if self._max_messages_reached:
                     return
+
+                await _safe_hook(self.hooks, "on_after_turn", self)
+
+        except asyncio.CancelledError:
+            if self._stop_event.is_set():
+                pass  # abort() — swallow
+            else:
+                raise
         finally:
+            if not self._aborted:
+                await _safe_hook(self.hooks, "on_after_agent", self)
             self._current_task = None
 
     def _check_max_messages(self) -> Message | None:
@@ -276,6 +293,15 @@ class Agent:
         generator exited without receiving any chunk).
         """
         self._llm_last_chunk = None
+        injected = await _safe_hook(self.hooks, "on_before_llm", self)
+        if injected is not None:
+            self._llm_last_chunk = injected
+            yield injected
+            replacement = await _safe_hook(self.hooks, "on_after_llm", self, injected)
+            if replacement is not None:
+                self._llm_last_chunk = replacement
+            self._complete_yielded += 1
+            return
         try:
             async for chunk in stream_chat(
                 base_url=self._provider_config.base_url,
@@ -295,6 +321,9 @@ class Agent:
                     yield chunk
                 else:
                     yield chunk.model_copy()
+                    replacement = await _safe_hook(self.hooks, "on_after_llm", self, chunk)
+                    if replacement is not None:
+                        self._llm_last_chunk = replacement
                     self._complete_yielded += 1
                     if self.max_messages > 0 and self._complete_yielded >= self.max_messages:
                         yield Message(
@@ -316,16 +345,40 @@ class Agent:
         self, tc: ToolCall
     ) -> tuple[ToolCall, str, float]:
         """Execute a single tool call and return (call, result, duration)."""
-        info = self._resolve_tool(tc.function.name)
+        name = tc.function.name
+        try:
+            args: dict[str, Any] = (
+                json.loads(tc.function.arguments) if tc.function.arguments else {}
+            )
+        except json.JSONDecodeError as exc:
+            logger.warning("Failed to parse arguments for tool '%s': %s", name, exc)
+            return tc, f"Error: failed to parse arguments for '{name}': {exc}", 0.0
+
+        injected = await _safe_hook(self.hooks, "on_before_tool", self, name, args)
+        if injected is not None:
+            logger.debug("Tool '%s' result injected by on_before_tool hook", name)
+            await _safe_hook(self.hooks, "on_after_tool", self, name, args, injected)
+            return tc, injected, 0.0
+
+        info = self._resolve_tool(name)
         if info is None:
-            return tc, (
-                f"Error: unknown tool '{tc.function.name}'. "
+            logger.warning("Unknown tool requested: '%s'", name)
+            result = (
+                f"Error: unknown tool '{name}'. "
                 f"Available tools: "
                 f"{', '.join(t.name for t in self._all_tools())}"
-            ), 0.0
+            )
+            await _safe_hook(self.hooks, "on_after_tool", self, name, args, result)
+            return tc, result, 0.0
+
+        logger.info("Tool call: %s(%s)", name, tc.function.arguments or "")
         t0 = time.perf_counter()
-        result = await self._run_tool(info, tc)
-        return tc, result, time.perf_counter() - t0
+        result = await self._run_tool(info, args)
+        duration = time.perf_counter() - t0
+        logger.info("Tool '%s' completed in %.2fs", name, duration)
+
+        await _safe_hook(self.hooks, "on_after_tool", self, name, args, result)
+        return tc, result, duration
 
     # ── internals ──────────────────────────────────────────────
 
@@ -366,18 +419,8 @@ class Agent:
             return self._extra_tools[name]
         return self._global_tools.get(name)
 
-    async def _run_tool(self, info: ToolInfo, tc: ToolCall) -> str:
+    async def _run_tool(self, info: ToolInfo, args: dict[str, Any]) -> str:
         """Execute a tool with timeout and cancellation support."""
-        try:
-            args = (
-                json.loads(tc.function.arguments)
-                if tc.function.arguments
-                else {}
-            )
-        except json.JSONDecodeError as exc:
-            return f"Error: failed to parse arguments for '{info.name}': {exc}"
-
-        # Validate args against the tool's JSON Schema before calling.
         schema = info.parameters
         allowed = set(schema.get("properties", {}).keys())
         required = set(schema.get("required", []))
@@ -399,12 +442,12 @@ class Agent:
                 result = await info.fn(**args)
             return str(result)
         except asyncio.TimeoutError:
-            return (
-                f"Error: tool '{info.name}' timed out after {self.timeout}s"
-            )
+            logger.error("Tool '%s' timed out after %.1fs", info.name, self.timeout)
+            return f"Error: tool '{info.name}' timed out after {self.timeout}s"
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            logger.error("Tool '%s' raised %s: %s", info.name, type(exc).__name__, exc)
             return f"Error in tool '{info.name}': {exc}"
 
 

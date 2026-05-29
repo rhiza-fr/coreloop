@@ -4,10 +4,8 @@ These tests don't need HTTP mocking — they test the conversation
 property and the restart contract directly.
 """
 
-from __future__ import annotations
 
-
-from minimal_agent import Agent, Message
+from minimal_agent import Agent, AgentHooks, Message
 import pytest
 
 
@@ -40,12 +38,13 @@ def test_conversation_is_a_copy():
 @pytest.mark.slow
 def test_public_attrs_are_readable():
     """Public constructor attrs are readable and (some) writeable."""
+    hooks = AgentHooks()
     agent = Agent(
         model="qwen3.5:9b",
         provider="ollama",
         system="You are helpful.",
         timeout=30.0,
-        max_turns=10,
+        hooks=hooks,
         max_messages=5,
         extra_body={"thinking": {"type": "disabled"}},
     )
@@ -54,7 +53,7 @@ def test_public_attrs_are_readable():
     assert agent.provider == "ollama"
     assert agent.system == "You are helpful."
     assert agent.timeout == 30.0
-    assert agent.max_turns == 10
+    assert agent.hooks is hooks
     assert agent.max_messages == 5
     assert agent.extra_body == {"thinking": {"type": "disabled"}}
 
