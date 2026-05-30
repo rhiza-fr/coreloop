@@ -6,17 +6,14 @@ property and the restart contract directly.
 
 
 from minimal_agent import Agent, AgentHooks, Message
-import pytest
 
 
-@pytest.mark.slow
 def test_conversation_empty_before_run():
     """Before any run() call, conversation is an empty list."""
     agent = Agent(model="qwen3.5:9b", provider="ollama")
     assert agent.messages == []
 
 
-@pytest.mark.slow
 def test_conversation_is_a_copy():
     """agent.messages returns a new list each time (defensive copy)."""
     agent = Agent(model="qwen3.5:9b", provider="ollama")
@@ -35,7 +32,6 @@ def test_conversation_is_a_copy():
     assert len(agent.messages) == 2  # original unchanged
 
 
-@pytest.mark.slow
 def test_public_attrs_are_readable():
     """Public constructor attrs are readable and (some) writeable."""
     hooks = AgentHooks()
@@ -60,7 +56,6 @@ def test_public_attrs_are_readable():
     assert agent.model == "new-model"
 
 
-@pytest.mark.slow
 def test_stop_resets_between_runs():
     """stop() clears the stop flag automatically on next run()."""
     agent = Agent(model="qwen3.5:9b", provider="ollama")
@@ -78,7 +73,6 @@ def test_stop_resets_between_runs():
     assert asyncio.Event() is not None  # just verifying it's usable
 
 
-@pytest.mark.slow
 def test_conversation_contains_system_message():
     """Agent prepends the system message to _messages during run()."""
     agent = Agent(
@@ -101,7 +95,6 @@ def test_conversation_contains_system_message():
     assert conv[1].role == "user"
 
 
-@pytest.mark.slow
 def test_restart_docstring_pattern():
     """The documented restart pattern is syntactically valid at the type level."""
     # This is a compile/type check only — no HTTP involved
