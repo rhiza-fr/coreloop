@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 
-from ..tool import ToolInfo
+from ..registry import ToolInfo
 from ._shared import _resolve_safe_strict, _make_tool_info
 
 def make_search_tool(root: str, *, max_chars: int = 20_000, search_timeout: float = 30.0) -> ToolInfo:

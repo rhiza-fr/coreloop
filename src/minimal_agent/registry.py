@@ -17,6 +17,15 @@ class ToolInfo:
     fn: Callable[..., Coroutine[Any, Any, str]]
     """The async callable that executes this tool."""
 
+    def __call__(self, *args: Any, **kwargs: Any) -> Coroutine[Any, Any, str]:
+        """Invoke the wrapped tool function.
+
+        ``@tool`` returns the ``ToolInfo``, so making it callable keeps the
+        decorated name usable directly — ``await my_tool(...)`` delegates to
+        the underlying function.
+        """
+        return self.fn(*args, **kwargs)
+
 
 # Global registry: tool name → ToolInfo
 _TOOL_REGISTRY: dict[str, ToolInfo] = {}

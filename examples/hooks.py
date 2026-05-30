@@ -43,37 +43,17 @@ import time
 from typing import Any
 
 from minimal_agent import Agent, AgentHooks, Message, Usage
-from minimal_agent.tools import make_tools
 
 # ── Single-responsibility hooks ───────────────────────────────────────────────
 #
 # Each class below does exactly one thing.  They are designed to be composed
 # (see the Composition section at the bottom) rather than doing too much in one
 # place.
-
-
-class MaxTurnsHook(AgentHooks):
-    """Stop the agent after N turns.
-
-    A "turn" is one full LLM + optional tool cycle.  on_after_turn fires at
-    the end of every turn regardless of whether tools were called, so this
-    counts all turns including pure text responses.
-
-    Use this as a safety valve to prevent runaway loops.
-    """
-
-    def __init__(self, n: int) -> None:
-        self._n = n
-        self._turns = 0
-
-    async def on_after_turn(self, agent: Agent) -> None:
-        # on_after_turn fires at the end of every turn — after tools if the
-        # LLM called any, or immediately after the LLM response if not.
-        # Calling agent.stop() here lets the current turn complete before
-        # the loop exits.  Use on_before_turn to stop before the LLM is called.
-        self._turns += 1
-        if self._turns >= self._n:
-            agent.stop()
+#
+# A turn-limiting hook ships with the library: ``from minimal_agent import
+# MaxTurnsHook``.  It stops the agent after N turns within a run and is what
+# backs the CLI's ``--max-turns`` flag.  The hooks below are illustrative
+# implementations you can adapt.
 
 
 class ToolLoggerHook(AgentHooks):
@@ -348,7 +328,7 @@ async def main() -> None:
     agent = Agent(
         model="qwen3.5:9b",
         provider="ollama",
-        tools=make_tools(),
+        tools=["read", "ls", "edit", "search"],
         hooks=DemoHooks(),
     )
     async for msg in agent.run(

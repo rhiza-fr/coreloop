@@ -127,7 +127,6 @@ async def test_stream_chat_tool_calls():
 
 # ── Agent tests ────────────────────────────────────────────────
 
-@pytest.mark.slow
 def test_agent_construct():
     agent = Agent(model="qwen3.5:9b", provider="ollama")
     assert not agent.stopped
@@ -139,7 +138,7 @@ def test_agent_construct():
 @pytest.mark.asyncio
 async def test_registered_tool_executes():
     """A globally registered @tool is looked up by name and run via run_tool."""
-    from minimal_agent.tool import get_tool
+    from minimal_agent.registry import get_tool
     from minimal_agent._execution import run_tool
 
     @tool(allow_override=True)

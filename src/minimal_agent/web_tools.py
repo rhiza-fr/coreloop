@@ -3,7 +3,7 @@
 Requires the ``web`` extra: ``pip install minimal-agent[web]``
 """
 
-from .tool import ToolInfo
+from .registry import ToolInfo
 from .tools._shared import _make_tool_info
 
 

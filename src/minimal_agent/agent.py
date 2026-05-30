@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from pathlib import Path
+from collections.abc import Sequence
 from typing import Any, AsyncIterator
 
 from ._cache import make_cache
@@ -10,12 +11,58 @@ from ._client import stream_chat
 from ._config import resolve_provider
 from ._execution import exec_tool
 from .hooks import AgentHooks, _safe_hook
-from .tool import ToolInfo, list_tools
+from .registry import ToolInfo, get_tool
 from .types import Message, ToolCall, Usage, _dump_messages
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_CACHE_DIR = Path.home() / ".cache" / "minimal-agent"
+
+_FILE_TOOL_NAMES = frozenset({"read", "ls", "edit", "search"})
+_WEB_TOOL_NAMES = frozenset({"web_search", "web_fetch"})
+
+
+def _resolve_tools(
+    tools: "Sequence[str | ToolInfo]", root: str | Path | None
+) -> dict[str, ToolInfo]:
+    """Resolve a mixed list of tool names and ``ToolInfo`` objects.
+
+    Names resolve, in order, to built-in file tools (scoped to *root*), built-in
+    web tools, then globally registered ``@tool`` functions. ``ToolInfo`` objects
+    (including ``@tool``-decorated functions) are used as-is. Later entries win on
+    name collisions. Raises ``ValueError`` for an unknown name.
+    """
+    resolved: dict[str, ToolInfo] = {}
+    file_tools: dict[str, ToolInfo] | None = None
+    web_tools: dict[str, ToolInfo] | None = None
+
+    for item in tools:
+        if isinstance(item, ToolInfo):
+            resolved[item.name] = item
+            continue
+        name = item
+        if name in _FILE_TOOL_NAMES:
+            if file_tools is None:
+                from .tools import make_tools
+
+                file_tools = {t.name: t for t in make_tools(root)}
+            resolved[name] = file_tools[name]
+        elif name in _WEB_TOOL_NAMES:
+            if web_tools is None:
+                from .web_tools import make_web_tools
+
+                web_tools = {t.name: t for t in make_web_tools()}
+            resolved[name] = web_tools[name]
+        else:
+            info = get_tool(name)
+            if info is None:
+                builtins = ", ".join(sorted(_FILE_TOOL_NAMES | _WEB_TOOL_NAMES))
+                raise ValueError(
+                    f"Unknown tool {name!r}. Built-ins: {builtins}; "
+                    "or register one with @tool."
+                )
+            resolved[name] = info
+    return resolved
 
 
 class Agent:
@@ -52,7 +99,8 @@ class Agent:
         model: str,
         provider: str = "openai",
         system: str | None = None,
-        tools: list[ToolInfo] | None = None,
+        tools: Sequence[str | ToolInfo] | None = None,
+        root: str | Path | None = None,
         timeout: float = 60.0,
         hooks: AgentHooks | None = None,
         extra_body: dict[str, Any] | None = None,
@@ -62,6 +110,7 @@ class Agent:
         self.model = model
         self.provider = provider
         self.system = system
+        self.root = root
         self.timeout = timeout
         self.hooks = hooks if hooks is not None else AgentHooks()
         self.extra_body = extra_body
@@ -70,19 +119,18 @@ class Agent:
         self._provider_config = resolve_provider(provider)
         self._messages: list[Message] = []
 
-        # Snapshot the global tool registry at construction time so that
-        # later @tool registrations don't affect this agent's tool set.
-        self._global_tools: dict[str, ToolInfo] = {t.name: t for t in list_tools()}
-
-        # Per-agent tools take name-priority over global ones.
-        self._extra_tools: dict[str, ToolInfo] = {}
-        if tools:
-            for t in tools:
-                self._extra_tools[t.name] = t
+        # Resolve names ('read', 'web_search', a registered @tool) and ToolInfo
+        # objects into this agent's tool set. The agent only has the tools listed
+        # here — there is no implicit inclusion of the global registry.
+        self._tools: dict[str, ToolInfo] = (
+            _resolve_tools(tools, root) if tools else {}
+        )
 
         self._stop_event = asyncio.Event()
         self._current_task: asyncio.Task[None] | None = None
         self._aborted = False
+        # Last message produced by the current LLM turn; set in _stream_llm_response.
+        self._llm_last_chunk: Message | None = None
 
     # ── public API ────────────────────────────────────────────────
 
@@ -197,21 +245,10 @@ class Agent:
     # ── tool registry ─────────────────────────────────────────────
 
     def _all_tools(self) -> list[ToolInfo]:
-        seen: set[str] = set()
-        result: list[ToolInfo] = []
-        for t in self._extra_tools.values():
-            seen.add(t.name)
-            result.append(t)
-        for t in self._global_tools.values():
-            if t.name not in seen:
-                seen.add(t.name)
-                result.append(t)
-        return result
+        return list(self._tools.values())
 
     def _resolve_tool(self, name: str) -> ToolInfo | None:
-        if name in self._extra_tools:
-            return self._extra_tools[name]
-        return self._global_tools.get(name)
+        return self._tools.get(name)
 
     def _tool_schemas(self) -> list[dict[str, Any]] | None:
         all_tools = self._all_tools()

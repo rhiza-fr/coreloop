@@ -7,7 +7,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from .hooks import _safe_hook
-from .tool import ToolInfo
+from .registry import ToolInfo
 from .types import ToolCall
 
 if TYPE_CHECKING:

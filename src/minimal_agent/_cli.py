@@ -14,7 +14,7 @@ from .agent import Agent
 from .hooks import AgentHooks
 from ._config import DefaultConfig, config_path, resolve_defaults, resolve_model_config
 from ._logging import setup_logging
-from .tool import ToolInfo
+from .registry import ToolInfo
 from .tools import make_tools
 from .web_tools import make_web_tools
 from .types import Message

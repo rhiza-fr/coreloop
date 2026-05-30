@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from ..tool import ToolInfo
+from ..registry import ToolInfo
 from .edit import make_edit_tool
 from .ls import make_ls_tool
 from .read import make_read_tool
@@ -9,7 +9,7 @@ from .search import make_search_tool
 
 
 def make_tools(
-    allowed_root: str | None = None,
+    allowed_root: str | Path | None = None,
     *,
     read_max_lines: int = 100,
     search_max_chars: int = 20_000,

@@ -2,7 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from ..tool import ToolInfo
+from ..registry import ToolInfo
 from ._shared import _resolve_safe_strict, _fmt_size, _make_tool_info
 
 _MAX_EDIT_BYTES = 10 * 1024 * 1024  # 10 MB

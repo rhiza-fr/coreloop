@@ -2,18 +2,17 @@
 
 import asyncio
 
-from minimal_agent import Agent, Message, make_tools
+from minimal_agent import Agent, Message
 
 
 async def main() -> None:
-    # make_tools returns read, ls, edit, search scoped to allowed_root.
+    # Name the built-in tools you want; they're scoped to ``root``.
     # The agent cannot access files outside this directory.
-    tools = make_tools(allowed_root=".")
-
     agent = Agent(
         model="qwen3.5:9b",
         provider="ollama",
-        tools=tools,
+        tools=["read", "ls", "edit", "search"],
+        root=".",
         system="You are a helpful assistant with access to the local filesystem.",
     )
 

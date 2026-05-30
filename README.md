@@ -1,13 +1,12 @@
 # minimal-agent
 
-Provides a lightweight async tool-calling agent core, fully interruptable and observable.
-Usable as library - core AsyncIterator[Message], hooks, logging.
-Any OpenAI-compatible API via httpx
-Minimal REPL
-Configurable tools: read, edit, ls, search
-web_search and web_fetch via the [web] extra.
+A lightweight async tool-calling agent for any OpenAI-compatible API (via `httpx`).
+The core is an `AsyncIterator[Message]` loop you can observe and interrupt through
+lifecycle hooks, usable as a library or through a minimal REPL/one-shot CLI. It ships
+with sandboxed file tools (`read`, `edit`, `ls`, `search`) and optional web tools
+(`web_search`, `web_fetch`, via the `[web]` extra).
 
-No MCP, no SKILLS
+No MCP, no skills — just the loop, the tools, and the hooks.
 
 
 ## Install
@@ -42,8 +41,8 @@ ma -p "Solve this step by step" --think
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-p, --prompt` | — | Run once and print result (non-interactive) |
-| `-m, --model` | `gpt-4o-mini` | Model name |
-| `--provider` | `openai` | Provider (see below) |
+| `-m, --model` | `qwen3.5:9b` | Model name |
+| `--provider` | `ollama` | Provider (see below) |
 | `-s, --system` | — | System prompt |
 | `--tools` | — | Comma-separated tools: `read,ls,edit,search,web_search,web_fetch` |
 | `-r, --root` | cwd | Allowed root directory for file tools |
@@ -61,8 +60,7 @@ Once the interactive REPL starts:
 
 | Command | Description |
 |---------|-------------|
-| `/quit` or `/exit` or `/q` | Exit the REPL |
-| `/stop` | Cancel the current agent run mid-turn |
+| `/quit` or `/exit` or `/q` | Exit the REPL (also Ctrl-C / Ctrl-D) |
 | `/new` | Clear conversation history and start fresh |
 | `/root <path>` | Change the allowed root for file tools (if `--tools` was set) |
 
@@ -87,8 +85,8 @@ Example:
 
 ```toml
 [defaults]
-provider = "openai"
-model = "gpt-4o-mini"
+provider = "ollama"
+model = "qwen3.5:9b"
 tools = ["read", "edit", "ls", "search"]
 # think = false
 # extra = {"reasoning_effort": "medium"}
@@ -153,9 +151,9 @@ ma --tools web_search,web_fetch -p "Latest news on X"
 ## Library
 
 ```python
-from minimal_agent import Agent, Message, tool, make_tools, make_web_tools
+from minimal_agent import Agent, Message, tool
 
-# Register a custom tool globally
+# Register a custom tool, then select it by name alongside the built-ins.
 @tool
 async def shout(text: str) -> str:
     """Return text in uppercase."""
@@ -165,7 +163,8 @@ agent = Agent(
     model="gpt-4o-mini",
     provider="openai",
     system="You are helpful.",
-    tools=make_tools(allowed_root="/tmp/sandbox"),
+    tools=["read", "ls", "shout"],   # built-ins + your @tool, by name
+    root="/tmp/sandbox",             # scopes the file tools
 )
 
 async for msg in agent.run([Message(role="user", content="List the files here, then read README.md")]):
@@ -183,7 +182,8 @@ Agent(
     model: str,
     provider: str = "openai",
     system: str | None = None,
-    tools: list[ToolInfo] | None = None,   # per-agent (takes priority over global)
+    tools: list[str | ToolInfo] | None = None,  # names and/or ToolInfo objects
+    root: str | Path | None = None,             # allowed root for file tools (default cwd)
     timeout: float = 60.0,
     hooks: AgentHooks | None = None,
     extra_body: dict | None = None,
@@ -191,7 +191,9 @@ Agent(
 )
 ```
 
-The agent core has no built-in turn limit. To bound a run, attach a hook that calls `agent.stop()` — see `MaxTurnsHook` in `examples/hooks.py` (this is how the CLI's `--max-turns` is implemented).
+An agent has exactly the tools you list — there is no implicit inclusion of the global registry. Each entry is either a **name** (`"read"`, `"ls"`, `"edit"`, `"search"`, `"web_search"`, `"web_fetch"`, or any `@tool`-registered function) or a `ToolInfo` object (e.g. one returned by `make_tools(...)` for custom scoping). File-tool names are scoped to `root`; an unknown name raises `ValueError`.
+
+The agent core has no built-in turn limit. To bound a run, attach a hook that calls `agent.stop()`. The library ships `MaxTurnsHook` for exactly this (`from minimal_agent import MaxTurnsHook`) — it counts turns per run and is what backs the CLI's `--max-turns` flag. See `examples/hooks.py` for more hook patterns.
 
 `agent.run(messages)` is an async generator that yields `Message` objects as they stream. It accepts an optional `usage` keyword argument — a mutable `Usage` object that cumulative token counts are added to after each LLM turn (requires provider support).
 
@@ -268,7 +270,7 @@ class Usage(BaseModel):
 
 ### Custom tools
 
-Use the `@tool` decorator for global tools, or pass closures directly as `ToolInfo` for per-agent state (see `make_tools` source for the pattern).
+Use the `@tool` decorator to register a tool by name, or pass closures directly as `ToolInfo` for per-agent state (see `make_tools` source for the pattern).
 
 ```python
 from minimal_agent import tool
@@ -280,7 +282,7 @@ async def read_env(name: str) -> str:
     return os.environ.get(name, "(not set)")
 ```
 
-Tools are auto-discovered by all `Agent` instances once registered. To register under a different name or with a description:
+Registering does not attach the tool to any agent — list it explicitly to use it: `Agent(..., tools=["read_env"])` (or pass the decorated object: `tools=[read_env]`). To register under a different name or with a description:
 
 ```python
 @tool(name="my_read", description="Read a file")
@@ -295,9 +297,15 @@ async def override(name: str) -> str:
 ### Registry helpers
 
 ```python
-from minimal_agent import clear_registry
-clear_registry()  # remove all registered tools (useful in tests)
+from minimal_agent import list_tools, get_tool, clear_registry
+
+list_tools()            # all globally registered tools (list[ToolInfo])
+get_tool("read")        # look one up by name (ToolInfo | None)
+clear_registry()        # remove all registered tools (useful in tests)
 ```
+
+A `@tool`-decorated function stays callable — the returned `ToolInfo` delegates
+to the wrapped coroutine, so `await my_tool(...)` works as well as registration.
 
 ### Caching
 

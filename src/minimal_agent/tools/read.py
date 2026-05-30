@@ -1,7 +1,7 @@
 import itertools
 from pathlib import Path
 
-from ..tool import ToolInfo
+from ..registry import ToolInfo
 from ._shared import _resolve_safe_strict, _fmt_size, _make_tool_info, _MAX_READ_BYTES
 
 
@@ -59,7 +59,7 @@ def make_read_tool(root: str, *, max_lines: int = 100) -> ToolInfo:
 
         result = "".join(lines)
         if truncated:
-            result += f"\n[Truncated: showing lines {_offset + 1}-{_offset + _limit}. Use offset/limit to read more.]"
+            result += f"\n[Truncated: showing lines {_offset + 1}-{_offset + _limit}. Call again with offset={_offset + _limit + 1} to continue.]"
         return result
 
     return _make_tool_info(read)
