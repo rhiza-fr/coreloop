@@ -11,8 +11,6 @@ import typer
 from rich.console import Console
 
 from .agent import Agent
-
-logger = logging.getLogger(__name__)
 from ._config import DefaultConfig, config_path, resolve_defaults, resolve_model_config
 from ._logging import setup_logging
 from .hooks import MaxTurnsHook
@@ -20,6 +18,8 @@ from .registry import ToolInfo
 from .tools import make_tools
 from .types import Message
 from .web_tools import make_web_tools
+
+logger = logging.getLogger(__name__)
 
 _DEFAULTS = resolve_defaults()
 _console = Console()
