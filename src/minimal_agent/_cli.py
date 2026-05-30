@@ -11,7 +11,7 @@ import typer
 from rich.console import Console
 
 from .agent import Agent
-from .hooks import AgentHooks
+from .hooks import MaxTurnsHook
 from ._config import DefaultConfig, config_path, resolve_defaults, resolve_model_config
 from ._logging import setup_logging
 from .registry import ToolInfo
@@ -24,16 +24,6 @@ _console = Console()
 _HTTP_ERROR_BODY_PREVIEW = 500
 _TOOL_RESULT_PREVIEW = 300
 
-
-class _MaxTurnsHook(AgentHooks):
-    def __init__(self, n: int) -> None:
-        self._n = n
-        self._turns = 0
-
-    async def on_after_turn(self, agent: Agent) -> None:
-        self._turns += 1
-        if self._turns >= self._n:
-            agent.stop()
 
 app = typer.Typer(
     name="ma",
@@ -207,7 +197,7 @@ def main(
             system=system,
             tools=tools,
             timeout=resolved_timeout,
-            hooks=_MaxTurnsHook(max_turns),
+            hooks=MaxTurnsHook(max_turns),
             extra_body=extra_body,
         )
     except KeyError as exc:
@@ -278,7 +268,7 @@ async def _repl(
     if tools_opt:
         header += f"  tools={tools_opt}  root={cwd_display}"
     _console.print(header, style="cyan")
-    cmds = "/quit  /stop  /new"
+    cmds = "/quit  /new"
     if tools_opt:
         cmds += "  /root <path>"
     _console.print(f"Commands: {cmds}\n", style="bright_black")
@@ -294,12 +284,7 @@ async def _repl(
         cmd = user_input.strip().lower()
         if cmd in ("/quit", "/exit", "/q"):
             break
-        if cmd == "/stop":
-            state["agent"].stop()
-            _console.print("Agent stopped.", style="yellow")
-            continue
         if cmd == "/new":
-            state["agent"].stop()
             state["agent"].reset()
             _console.print("Started new conversation.", style="green")
             continue
@@ -314,7 +299,7 @@ async def _repl(
                     system=system,
                     tools=new_tools,
                     timeout=timeout,
-                    hooks=_MaxTurnsHook(max_turns),
+                    hooks=MaxTurnsHook(max_turns),
                     extra_body=extra_body,
                 )
                 _console.print(f"Root changed to {Path(new_root).resolve()}", style="green")

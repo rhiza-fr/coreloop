@@ -2,7 +2,7 @@
 
 from .agent import Agent
 from .tools import make_tools
-from .hooks import AgentHooks
+from .hooks import AgentHooks, MaxTurnsHook
 from .registry import ToolInfo, clear_registry, get_tool, list_tools, tool
 from .web_tools import make_web_tools
 from .types import FunctionCall, Message, ToolCall, Usage
@@ -11,6 +11,7 @@ __all__ = [
     "Agent",
     "AgentHooks",
     "FunctionCall",
+    "MaxTurnsHook",
     "Message",
     "ToolCall",
     "ToolInfo",

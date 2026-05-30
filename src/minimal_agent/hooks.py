@@ -87,6 +87,30 @@ class AgentHooks:
         """Called at the end of each turn, after tools (if any). Fires every turn."""
 
 
+class MaxTurnsHook(AgentHooks):
+    """Stop the agent after *n* turns within a single ``run()``.
+
+    A "turn" is one LLM call plus any tool calls it triggered.  The counter
+    resets at the start of every ``run()`` (in ``on_before_agent``), so the
+    limit is per-run: reusing one hook instance across multiple runs gives
+    each run its own fresh budget rather than draining a shared one.
+
+    This is the implementation behind the CLI's ``--max-turns`` flag.
+    """
+
+    def __init__(self, n: int) -> None:
+        self._n = n
+        self._turns = 0
+
+    async def on_before_agent(self, agent: Agent) -> None:
+        self._turns = 0
+
+    async def on_after_turn(self, agent: Agent) -> None:
+        self._turns += 1
+        if self._turns >= self._n:
+            agent.stop()
+
+
 async def _safe_hook(hooks: AgentHooks, method: str, *args: Any) -> Any:
     """Call a hook method, logging and swallowing any exceptions."""
     try:
