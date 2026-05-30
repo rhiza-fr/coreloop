@@ -1,4 +1,8 @@
-"""HTTP client for OpenAI-compatible chat completion endpoints with SSE streaming."""
+"""HTTP client for OpenAI-compatible chat completion endpoints with SSE streaming.
+
+Note: Ollama via the openAI endpoint does not stream thinking models. They arrive at the end.
+
+"""
 
 import json
 import logging
@@ -8,7 +12,7 @@ from typing import Any, AsyncIterator
 import httpx
 
 from ._cache import request_key
-from .types import Message, ToolCall, FunctionCall, Usage
+from .types import FunctionCall, Message, ToolCall, Usage
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +94,7 @@ async def stream_chat(
                     msg += f": {detail}"
                 raise httpx.HTTPStatusError(msg, request=resp.request, response=resp)
             async for line in resp.aiter_lines():
+                # logger.debug("SSE %s", line)  # See raw response from the model
                 line = line.strip()
                 if not line or not line.startswith("data: "):
                     continue
@@ -122,11 +127,12 @@ async def stream_chat(
                 finish_reason = choices[0].get("finish_reason")
 
                 # --- reasoning delta (thinking tokens, accumulated silently) ---
-                if "reasoning" in delta and delta["reasoning"] is not None:
-                    accumulated_reasoning = (accumulated_reasoning or "") + delta["reasoning"]
+                reasoning_delta = delta.get("reasoning") or delta.get("reasoning_content")
+                if reasoning_delta:
+                    accumulated_reasoning = (accumulated_reasoning or "") + reasoning_delta
 
                 # --- content delta ---
-                if "content" in delta and delta["content"] is not None:
+                if delta.get("content"):
                     accumulated_content = (accumulated_content or "") + delta["content"]
                     yield Message(
                         role="assistant",

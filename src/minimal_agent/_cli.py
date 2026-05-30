@@ -2,22 +2,24 @@
 
 import asyncio
 import json
+import logging
 import os
 from pathlib import Path
-from typing import Optional
 
 import httpx
 import typer
 from rich.console import Console
 
 from .agent import Agent
-from .hooks import MaxTurnsHook
+
+logger = logging.getLogger(__name__)
 from ._config import DefaultConfig, config_path, resolve_defaults, resolve_model_config
 from ._logging import setup_logging
+from .hooks import MaxTurnsHook
 from .registry import ToolInfo
 from .tools import make_tools
-from .web_tools import make_web_tools
 from .types import Message
+from .web_tools import make_web_tools
 
 _DEFAULTS = resolve_defaults()
 _console = Console()
@@ -105,50 +107,50 @@ def _build_tools(
 @app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
-    prompt: Optional[str] = typer.Option(
-        None, "--prompt", "-p", help="Run once and print final result (non-interactive)"
+    provider: str = typer.Option(
+        _DEFAULTS.provider, "--provider", help="Provider name"
     ),
     model: str = typer.Option(
         _DEFAULTS.model, "--model", "-m", help="Model name"
     ),
-    provider: str = typer.Option(
-        _DEFAULTS.provider, "--provider", help="Provider name"
+    prompt: str | None = typer.Option(
+        None, "--prompt", "-p", help="Run once and print final result (non-interactive)"
     ),
-    system: Optional[str] = typer.Option(
+    system: str | None = typer.Option(
         None, "--system", "-s", help="System prompt (optional)"
     ),
-    tools_opt: Optional[str] = typer.Option(
+    think: bool | None = typer.Option(
+        None, "--think/--no-think",
+        help="Enable (medium) or disable (none) reasoning_effort",
+    ),
+    extra: str | None = typer.Option(
+        None, "--extra", "-e",
+        help="Extra JSON body params merged into the API request",
+    ),
+    tools_opt: str | None = typer.Option(
         None, "--tools",
         help="Comma-separated built-in tools to enable: read,edit,ls,search",
         metavar="TOOLS",
     ),
-    root: Optional[str] = typer.Option(
+    root: str | None = typer.Option(
         None, "--root", "-r",
         help="Allowed root directory for file tools (default: cwd)",
     ),
-    searxng_url: Optional[str] = typer.Option(
+    searxng_url: str | None = typer.Option(
         None, "--searxng-url",
         help="SearXNG base URL for web tools (overrides SEARXNG_URL env var)",
         envvar="SEARXNG_URL",
     ),
-    timeout: Optional[float] = typer.Option(
-        None, "--timeout", "-t", help="Timeout for LLM and tool calls"
-    ),
-    max_turns: Optional[int] = typer.Option(
+    max_turns: int | None = typer.Option(
         None, "--max-turns", "-n", help="Maximum agent loop iterations"
     ),
-    think: Optional[bool] = typer.Option(
-        None, "--think/--no-think",
-        help="Enable (medium) or disable (none) reasoning_effort",
-    ),
-    extra: Optional[str] = typer.Option(
-        None, "--extra", "-e",
-        help="Extra JSON body params merged into the API request",
+    timeout: float | None = typer.Option(
+        None, "--timeout", "-t", help="Timeout for LLM and tool calls"
     ),
     json_out: bool = typer.Option(
         False, "--json", help="Output all non-partial messages as JSONL (one JSON object per line)"
     ),
-    log_level: Optional[str] = typer.Option(
+    log_level: str | None = typer.Option(
         None, "--log-level", "-l",
         help="Logging level: DEBUG, INFO, WARNING, ERROR (default: no logging)",
         metavar="LEVEL",
@@ -186,7 +188,8 @@ def main(
     resolved_timeout: float = timeout if timeout is not None else cfg.llm_timeout
 
     extra_body: dict | None = json.loads(extra) if extra else None
-    extra_body = (extra_body or {}) | {"reasoning_effort": "medium" if think else "none"}
+    if think is not None:
+        extra_body = (extra_body or {}) | {"reasoning_effort": "medium" if think else "none"}
 
     tools = _build_tools(tools_opt, root, searxng_url, cfg)
 
@@ -216,6 +219,11 @@ def main(
             if body:
                 typer.echo(f"  {body}", err=True)
             raise typer.Exit(1)
+        except httpx.TimeoutException:
+            msg = f"LLM {provider} {model} did not respond within {resolved_timeout}s (use --timeout to increase)"
+            logger.error(msg)
+            typer.echo(f"Error: {msg}", err=True)
+            raise typer.Exit(1)
         except httpx.RequestError as exc:
             typer.echo(f"Error: request failed — {exc}", err=True)
             raise typer.Exit(1)
@@ -228,6 +236,11 @@ def main(
             body = exc.response.text[:_HTTP_ERROR_BODY_PREVIEW]
             if body:
                 typer.echo(f"  {body}", err=True)
+            raise typer.Exit(1)
+        except httpx.TimeoutException:
+            msg = f"LLM did not respond within {resolved_timeout}s (use --timeout to increase)"
+            logger.error(msg)
+            typer.echo(f"Error: {msg}", err=True)
             raise typer.Exit(1)
         except httpx.RequestError as exc:
             typer.echo(f"Error: request failed — {exc}", err=True)

@@ -2,8 +2,8 @@
 
 import asyncio
 import logging
-from pathlib import Path
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any, AsyncIterator
 
 from ._cache import make_cache

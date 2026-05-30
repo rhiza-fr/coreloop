@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 
 from ..registry import ToolInfo
-from ._shared import _resolve_safe_strict, _fmt_size, _make_tool_info
+from ._shared import _resolve_safe, _resolve_safe_strict, _fmt_size, _make_tool_info
 
 _MAX_EDIT_BYTES = 10 * 1024 * 1024  # 10 MB
 
@@ -41,23 +41,45 @@ def make_edit_tool(root: str) -> ToolInfo:
         disambiguate.  Pass the 1-based line number where the text to
         replace appears.
 
+        To create a new file, pass ``old_text=""`` — the file must not already
+        exist.  Parent directories are created automatically.
+
         Parameters
         ----------
         path :
             Relative or absolute path to the file.
         old_text :
             Exact text to search for (must appear exactly once, unless
-            ``line_hint`` is given).
+            ``line_hint`` is given).  Pass ``""`` to create a new file.
         new_text :
-            Replacement text.
+            Replacement text (or full content when creating a new file).
         line_hint :
             Optional 1-based line number that *old_text* appears on.
             Required when *old_text* appears more than once.
         """
-        try:
-            safe = _resolve_safe_strict(path, root_path)
-        except ValueError as exc:
-            return f"Error: {exc}"
+        if not old_text:
+            try:
+                safe = _resolve_safe(path, root_path)
+            except ValueError as exc:
+                return f"Error: {exc}"
+            if not Path(safe).exists():
+                try:
+                    Path(safe).parent.mkdir(parents=True, exist_ok=True)
+                    with tempfile.NamedTemporaryFile(
+                        "w", dir=Path(safe).parent, delete=False, encoding="utf-8", suffix=".tmp"
+                    ) as tmp:
+                        tmp.write(new_text)
+                        tmp_path = tmp.name
+                    os.replace(tmp_path, safe)
+                except OSError as exc:
+                    return f"Error: cannot create {path!r}: {exc}"
+                return f"Created {path!r}"
+            # file exists and old_text is empty — fall through to the empty-file check below
+        else:
+            try:
+                safe = _resolve_safe_strict(path, root_path)
+            except ValueError as exc:
+                return f"Error: {exc}"
 
         try:
             file_size = Path(safe).stat().st_size
@@ -81,7 +103,6 @@ def make_edit_tool(root: str) -> ToolInfo:
         if not old_text:
             if content:
                 return "Error: old_text must be a non-empty string (file is not empty)"
-            # empty old_text on an empty file: write new_text as the full content
             idx = 0
         else:
             if old_text not in content:

@@ -77,7 +77,7 @@ class DefaultConfig:
     tools: list[str] = field(default_factory=list)
     think: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
-    max_turns: int = 20
+    max_turns: int = 50
     searxng_url: str | None = None
     llm_timeout: float = 60.0
     tool_read_max_lines: int = 100
