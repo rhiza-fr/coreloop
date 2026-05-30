@@ -3,7 +3,7 @@
 import functools
 import os
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
 from typing import Any
 
@@ -71,8 +71,8 @@ def _load_config() -> dict[str, Any]:
 class DefaultConfig:
     """Resolved defaults, optionally merged with model-specific overrides."""
 
-    provider: str = "openai"
-    model: str = "gpt-4o-mini"
+    provider: str = "ollama"
+    model: str = "qwen3.5:9b"
     system: str | None = None
     tools: list[str] = field(default_factory=list)
     think: bool = False
@@ -88,7 +88,7 @@ class DefaultConfig:
 def resolve_defaults() -> DefaultConfig:
     """Return the base ``[defaults]`` section (no model overrides applied)."""
     config = _load_config()
-    return _entry_to_config(config.get("defaults", {}))
+    return _apply_overrides(DefaultConfig(), config.get("defaults", {}))
 
 
 def resolve_model_config(model: str) -> DefaultConfig:
@@ -97,50 +97,21 @@ def resolve_model_config(model: str) -> DefaultConfig:
     base counterpart for that field.
     """
     config = _load_config()
-    base = DefaultConfig()
-    if "defaults" in config:
-        base = _entry_to_config(config["defaults"])
-
-    models_section = config.get("models", {})
-    override = models_section.get(model, {})
-    if override:
-        base = _apply_overrides(base, override)
-    return base
-
-
-def _entry_to_config(entry: dict[str, Any]) -> DefaultConfig:
-    return DefaultConfig(
-        provider=entry.get("provider", "openai"),
-        model=entry.get("model", "gpt-4o-mini"),
-        system=entry.get("system"),
-        tools=entry.get("tools", []),
-        think=entry.get("think", False),
-        extra=entry.get("extra", {}),
-        max_turns=entry.get("max_turns", 20),
-        searxng_url=entry.get("searxng_url"),
-        llm_timeout=entry.get("llm_timeout", 60.0),
-        tool_read_max_lines=entry.get("tool_read_max_lines", 100),
-        tool_search_max_chars=entry.get("tool_search_max_chars", 20_000),
-        tool_search_timeout=entry.get("tool_search_timeout", 30.0),
-    )
+    base = _apply_overrides(DefaultConfig(), config.get("defaults", {}))
+    override = config.get("models", {}).get(model, {})
+    return _apply_overrides(base, override)
 
 
 def _apply_overrides(base: DefaultConfig, overrides: dict[str, Any]) -> DefaultConfig:
-    """Shallow merge *overrides* on top of *base*."""
-    return DefaultConfig(
-        provider=overrides.get("provider", base.provider),
-        model=overrides.get("model", base.model),
-        system=overrides.get("system", base.system),
-        tools=overrides.get("tools", base.tools),
-        think=overrides.get("think", base.think),
-        extra=overrides.get("extra", base.extra),
-        max_turns=overrides.get("max_turns", base.max_turns),
-        searxng_url=overrides.get("searxng_url", base.searxng_url),
-        llm_timeout=overrides.get("llm_timeout", base.llm_timeout),
-        tool_read_max_lines=overrides.get("tool_read_max_lines", base.tool_read_max_lines),
-        tool_search_max_chars=overrides.get("tool_search_max_chars", base.tool_search_max_chars),
-        tool_search_timeout=overrides.get("tool_search_timeout", base.tool_search_timeout),
-    )
+    """Return *base* with recognised keys from *overrides* applied on top.
+
+    Unknown keys are ignored.  This is the single place that maps a config
+    table (``[defaults]`` or ``[models.<name>]``) onto ``DefaultConfig`` —
+    add a field to the dataclass and it is picked up here automatically.
+    """
+    known = {f.name for f in fields(DefaultConfig)}
+    valid = {k: v for k, v in overrides.items() if k in known}
+    return replace(base, **valid)
 
 
 def resolve_provider(provider_name: str) -> ProviderConfig:

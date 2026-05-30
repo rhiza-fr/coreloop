@@ -1,6 +1,6 @@
 [defaults]
-provider = "openai"
-model = "gpt-4o-mini"
+provider = "ollama"
+model = "qwen3.5:9b"
 
 # These can be set as defaults or per provider
 #
