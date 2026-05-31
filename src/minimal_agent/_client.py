@@ -83,7 +83,7 @@ async def stream_chat(
     _owned = client is None
     _session = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout))
     _t0 = time.perf_counter()
-    logger.debug("POST %s model=%s messages=%d", url, model, len(messages))
+    logger.info("POST %s model=%s messages=%d", url, model, len(messages))
     try:
         async with _session.stream("POST", url, headers=headers, json=body) as resp:
             if resp.status_code >= 400:

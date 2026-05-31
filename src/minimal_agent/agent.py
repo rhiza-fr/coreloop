@@ -102,6 +102,7 @@ class Agent:
         tools: Sequence[str | ToolInfo] | None = None,
         root: str | Path | None = None,
         timeout: float = 60.0,
+        llm_timeout: float = 300.0,
         hooks: AgentHooks | None = None,
         extra_body: dict[str, Any] | None = None,
         cache_dir: Path | str | None = _DEFAULT_CACHE_DIR,
@@ -112,6 +113,7 @@ class Agent:
         self.system = system
         self.root = root
         self.timeout = timeout
+        self.llm_timeout = llm_timeout
         self.hooks = hooks if hooks is not None else AgentHooks()
         self.extra_body = extra_body
         self._cache = make_cache(cache_dir) if cache_dir is not None else None
@@ -295,27 +297,29 @@ class Agent:
                 self._llm_last_chunk = replacement
             return
         try:
-            async for chunk in stream_chat(
-                base_url=self._provider_config.base_url,
-                api_key=self._provider_config.api_key,
-                model=self.model,
-                messages=_dump_messages(self._messages),
-                tools=self._tool_schemas(),
-                timeout=self.timeout,
-                extra_body=self.extra_body,
-                usage=usage,
-                cache=self._cache,
-            ):
-                if self._stop_event.is_set():
-                    return
-                self._llm_last_chunk = chunk
-                if chunk.partial:
-                    yield chunk
-                else:
-                    yield chunk.model_copy()
-                    replacement = await _safe_hook(self.hooks, "on_after_llm", self, chunk)
-                    if replacement is not None:
-                        self._llm_last_chunk = replacement
+            llm_deadline = self.llm_timeout if self.llm_timeout is not None else self.timeout
+            async with asyncio.timeout(llm_deadline):
+                async for chunk in stream_chat(
+                    base_url=self._provider_config.base_url,
+                    api_key=self._provider_config.api_key,
+                    model=self.model,
+                    messages=_dump_messages(self._messages),
+                    tools=self._tool_schemas(),
+                    timeout=self.timeout,
+                    extra_body=self.extra_body,
+                    usage=usage,
+                    cache=self._cache,
+                ):
+                    if self._stop_event.is_set():
+                        return
+                    self._llm_last_chunk = chunk
+                    if chunk.partial:
+                        yield chunk
+                    else:
+                        yield chunk.model_copy()
+                        replacement = await _safe_hook(self.hooks, "on_after_llm", self, chunk)
+                        if replacement is not None:
+                            self._llm_last_chunk = replacement
         except asyncio.CancelledError:
             if self._stop_event.is_set():
                 return
