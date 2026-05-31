@@ -24,7 +24,9 @@ Hook firing order for a single agent.run() call:
             for each tool (in parallel):
                 on_before_tool(agent, name, args)  # return str to inject result
                 <tool executes>
-                on_after_tool(agent, name, args, result)
+                on_after_tool(agent, name, args, result) -> str | None
+                    # Return a str to replace the result in conversation history.
+                    # Return None to use the result as-is.
 
         on_after_turn(agent)              # fires every turn, with or without tools
 
@@ -61,17 +63,20 @@ class ToolLoggerHook(AgentHooks):
 
     on_before_tool can either return None (proceed normally) or return a string
     to use as the tool result, skipping the actual tool execution entirely.
-    This hook only observes, so it always returns None.
+    on_after_tool can return None (keep result as-is) or a string to replace
+    the result that gets stored in conversation history.
+    This hook only observes, so both methods always return None.
     """
 
     async def on_before_tool(self, agent: Agent, name: str, args: dict[str, Any]) -> str | None:
         print(f"→ {name}({args})")
         return None  # None means "execute the tool normally"
 
-    async def on_after_tool(self, agent: Agent, name: str, args: dict[str, Any], result: str) -> None:
+    async def on_after_tool(self, agent: Agent, name: str, args: dict[str, Any], result: str) -> str | None:
         # result is always a string — tools that raise exceptions have their
         # error message captured into result rather than propagating.
         print(f"← {name}: {result[:120]}")
+        return None  # None means "use the result as-is"
 
 
 class TimingHook(AgentHooks):
@@ -143,9 +148,10 @@ class LoggingHook(AgentHooks):
         self._log.info("on_before_tool: %s(%s)", name, args)
         return None
 
-    async def on_after_tool(self, agent: Agent, name: str, args: dict[str, Any], result: str) -> None:
+    async def on_after_tool(self, agent: Agent, name: str, args: dict[str, Any], result: str) -> str | None:
         preview = result[:120].replace("\n", " ")
         self._log.info("on_after_tool: %s -> %s", name, preview)
+        return None
 
 
 class UsageHook(AgentHooks):
@@ -267,7 +273,10 @@ class UsageHook(AgentHooks):
 #
 #       async def on_after_tool(self, agent, name, args, result):
 #           for h in self._hooks:
-#               await h.on_after_tool(agent, name, args, result)
+#               replacement = await h.on_after_tool(agent, name, args, result)
+#               if replacement is not None:
+#                   result = replacement  # pass modified result down the chain
+#           return result
 #
 #       async def on_after_turn(self, agent):
 #           for h in self._hooks:
@@ -317,8 +326,8 @@ async def main() -> None:
         async def on_before_tool(self, agent: Agent, name: str, args: dict) -> str | None:
             return await LoggingHook.on_before_tool(self, agent, name, args)
 
-        async def on_after_tool(self, agent: Agent, name: str, args: dict, result: str) -> None:
-            await LoggingHook.on_after_tool(self, agent, name, args, result)
+        async def on_after_tool(self, agent: Agent, name: str, args: dict, result: str) -> str | None:
+            return await LoggingHook.on_after_tool(self, agent, name, args, result)
 
         async def on_after_agent(self, agent: Agent) -> None:
             await LoggingHook.on_after_agent(self, agent)

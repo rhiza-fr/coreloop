@@ -30,8 +30,8 @@ async def exec_tool(tc: ToolCall, agent: "Agent") -> tuple[ToolCall, str, float]
     injected = await _safe_hook(agent.hooks, "on_before_tool", agent, name, args)
     if injected is not None:
         logger.debug("Tool '%s' result injected by on_before_tool hook", name)
-        await _safe_hook(agent.hooks, "on_after_tool", agent, name, args, injected)
-        return tc, injected, 0.0
+        replacement = await _safe_hook(agent.hooks, "on_after_tool", agent, name, args, injected)
+        return tc, replacement if replacement is not None else injected, 0.0
 
     info = agent._resolve_tool(name)
     if info is None:
@@ -40,8 +40,8 @@ async def exec_tool(tc: ToolCall, agent: "Agent") -> tuple[ToolCall, str, float]
             f"Error: unknown tool '{name}'. "
             f"Available tools: {', '.join(t.name for t in agent._all_tools())}"
         )
-        await _safe_hook(agent.hooks, "on_after_tool", agent, name, args, result)
-        return tc, result, 0.0
+        replacement = await _safe_hook(agent.hooks, "on_after_tool", agent, name, args, result)
+        return tc, replacement if replacement is not None else result, 0.0
 
     logger.info("Tool call: %s(%s)", name, tc.function.arguments or "")
     t0 = time.perf_counter()
@@ -49,7 +49,9 @@ async def exec_tool(tc: ToolCall, agent: "Agent") -> tuple[ToolCall, str, float]
     duration = time.perf_counter() - t0
     logger.info("Tool '%s' completed in %.2fs", name, duration)
 
-    await _safe_hook(agent.hooks, "on_after_tool", agent, name, args, result)
+    replacement = await _safe_hook(agent.hooks, "on_after_tool", agent, name, args, result)
+    if replacement is not None:
+        result = replacement
     return tc, result, duration
 
 

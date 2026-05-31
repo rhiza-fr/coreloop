@@ -23,7 +23,9 @@ Hooks fire in this order during a single agent.run() call:
                     # Return a str to inject as the result (tool is skipped).
                     # Return None to execute the tool normally.
                 <tool executes>
-                on_after_tool(agent, name, args, result)
+                on_after_tool(agent, name, args, result) -> str | None
+                    # Return a str to replace the result in conversation history.
+                    # Return None to use the result as-is.
 
         on_after_turn(agent)            # fires every turn, with or without tools
 
@@ -77,8 +79,13 @@ class AgentHooks:
         """
         return None
 
-    async def on_after_tool(self, agent: Agent, name: str, args: dict[str, Any], result: str) -> None:
-        """Called after a tool executes with its result."""
+    async def on_after_tool(self, agent: Agent, name: str, args: dict[str, Any], result: str) -> str | None:
+        """Called after a tool executes with its result.
+
+        Return a str to replace the result that gets appended to conversation
+        history.  Return None to use the result as-is.
+        """
+        return None
 
     async def on_before_turn(self, agent: Agent) -> None:
         """Called at the start of each turn, before the LLM call."""
