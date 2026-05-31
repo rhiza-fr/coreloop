@@ -1,6 +1,5 @@
 """Tests for the profile system: merging, interpolation, get_config, resolve_profile."""
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest

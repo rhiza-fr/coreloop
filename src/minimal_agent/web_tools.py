@@ -47,8 +47,6 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
             Time filter: ``all_time``, ``day``, ``week``, ``month``, or ``year``.
         """
         try:
-            if max_results is not None:
-                max_results = int(max_results)
             results = await _web_search(
                 query=query,
                 max_results=max_results,

@@ -95,7 +95,8 @@ def _build_tools(
         )
         raise typer.Exit(1)
     result: list[ToolInfo] = []
-    if names & _BUILTIN_TOOL_NAMES:
+    _FS_TOOL_NAMES = _BUILTIN_TOOL_NAMES - {"bash"}
+    if names & _FS_TOOL_NAMES:
         fs_tools = make_tools(
             allowed_root=root,
             read_max_lines=get_config("tool.read.max_lines", profile, 100),
@@ -106,6 +107,18 @@ def _build_tools(
             search_timeout=get_config("tool.grep.timeout", profile, 30.0),
         )
         result.extend(t for t in fs_tools if t.name in names)
+    if "bash" in names:
+        from .tools.bash import make_bash_tool
+
+        result.append(
+            make_bash_tool(
+                str(Path(root).resolve()) if root else ".",
+                max_chars=get_config("tool.bash.max_chars", profile, 10_000),
+                max_raw_bytes=get_config("tool.bash.max_raw_bytes", profile, 100 * 1024),
+                default_timeout=get_config("tool.bash.default_timeout", profile, 180),
+                max_timeout=get_config("tool.bash.max_timeout", profile, 300),
+            )
+        )
     if names & _WEB_TOOL_NAMES:
         url = searxng_url or os.environ.get("SEARXNG_URL")
         try:

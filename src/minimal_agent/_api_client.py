@@ -95,7 +95,6 @@ async def stream_chat(
                     msg += f": {detail}"
                 raise httpx.HTTPStatusError(msg, request=resp.request, response=resp)
             async for line in resp.aiter_lines():
-                # logger.debug("SSE %s", line)  # See raw response from the model
                 line = line.strip()
                 if not line or not line.startswith("data: "):
                     continue

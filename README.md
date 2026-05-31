@@ -283,7 +283,8 @@ to construct an agent from one.
 | `reasoning` | `str \| None` | Thinking-model scratchpad (Qwen3, DeepSeek). Not sent back to the API. |
 | `partial` | `bool` | `True` for streaming delta chunks |
 | `usage` | `Usage \| None` | Token counts from the model |
-| `duration` | `float \| None` | Tool execution time in seconds |
+| `model` | `str \| None` | Model name reported by the API |
+| `duration` | `float \| None` | Seconds elapsed for the LLM turn or tool call |
 | `timestamp` | `datetime` | UTC creation time |
 
 ## Caching

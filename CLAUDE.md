@@ -49,7 +49,7 @@ uv run ma --profile openai -p "your prompt here"
 
 The library is a minimal, dependency-light agent loop built on top of any OpenAI-compatible API. The main layers:
 
-**`types.py`** — Pydantic models: `Message`, `ToolCall`, `FunctionCall`, `Usage`. These mirror the OpenAI chat format closely. `Message.reasoning` is a streaming-only field (for thinking models like DeepSeek/Qwen3) that is deliberately excluded when messages are sent back to the API.
+**`types.py`** — Pydantic models: `Message`, `ToolCall`, `FunctionCall`, `Usage`. These mirror the OpenAI chat format closely. `Message.reasoning` is a streaming-only field (for thinking models like DeepSeek/Qwen3) that is deliberately excluded when messages are sent back to the API. `Message.model` carries the model name reported by the API response.
 
 **`config.py`** — `AgentConfig` dataclass: a portable, serialisable bundle of Agent constructor parameters (`model`, `base_url`, `api_key`, `system`, `tools`, `root`, timeouts, `llm_extra_body`, `cache_dir`). Use `Agent.from_config(cfg)` or `dataclasses.replace(cfg, ...)` to derive variants. Hooks are excluded — they are stateful runtime objects.
 
@@ -59,7 +59,7 @@ The library is a minimal, dependency-light agent loop built on top of any OpenAI
 
 **`registry.py`** — `@tool` decorator that registers async functions into a global `_TOOL_REGISTRY`. Infers JSON Schema parameters from Python type annotations automatically. Defines the `ToolInfo` dataclass. Also exposes `get_tool(name)`, `list_tools()`, `clear_registry()`.
 
-**`tools/`** — Built-in file tools (one module each): `read`, `ls`, `edit`, `grep`. `make_tools(allowed_root)` in `tools/__init__.py` returns all four as a list of `ToolInfo`. All are constructed with closures so the allowed root is captured per-call and path traversal is enforced. `make_grep_tool` wraps `rg` (ripgrep). `make_bash_tool` in `tools/bash.py` runs shell commands via `bash -c` with dangerous-pattern blocking, working-directory scoping, output truncation, and timeout/process-group kill. `web_tools.py` provides the optional `make_web_tools` (`web_search`, `web_fetch`) behind the `[web]` extra.
+**`tools/`** — Built-in file tools (one module each): `read`, `ls`, `edit`, `grep`. `make_tools(allowed_root)` in `tools/__init__.py` returns those four as a list of `ToolInfo`. All are constructed with closures so the allowed root is captured per-call and path traversal is enforced. `make_grep_tool` wraps `rg` (ripgrep). `make_bash_tool` in `tools/bash.py` runs shell commands via `bash -c` with dangerous-pattern blocking, working-directory scoping, output truncation, and timeout/process-group kill; it is built separately (not via `make_tools`) and accepts config parameters (`max_chars`, `default_timeout`, etc.) from `[config.tool.bash]`. `web_tools.py` provides the optional `make_web_tools` (`web_search`, `web_fetch`) behind the `[web]` extra.
 
 **`_tool_execution.py`** — `exec_tool()`: parses tool-call arguments, runs `on_before_tool`/`on_after_tool` hooks, validates arguments against the tool's JSON Schema, and executes the tool with a timeout, formatting any error into the returned result string.
 
@@ -69,7 +69,7 @@ The library is a minimal, dependency-light agent loop built on top of any OpenAI
 
 **`_cache.py`** — Disk cache (via `diskcache`) for LLM responses, keyed by a SHA-256 of the request. `Agent` enables it by default (`cache_dir`); pass `cache_dir=None` to disable.
 
-**`minimal_cli.py`** — Typer CLI (`ma`). Loads `~/minimal-agent.toml` (created on first run from the bundled default) and resolves a named `--profile`. All `AgentConfig` fields can be overridden via flags (`--model`, `--base-url`, `--api-key`, `--tools`, `--root`, `--llm-timeout`, etc.). Bare `ma` starts an interactive REPL; `ma -p PROMPT` runs once. The REPL shows tool calls in yellow and truncated results in grey. `/root <path>` rebuilds the agent with a new file-tool root.
+**`minimal_cli.py`** — Typer CLI (`ma`). Reads `~/minimal-agent.toml` (created on first run from the bundled default) via `resolve_profile()` and `_load_merged_profile()`, then applies CLI flag overrides. All `AgentConfig` fields can be overridden via flags (`--model`, `--base-url`, `--api-key`, `--tools`, `--root`, `--llm-timeout`, etc.). Bare `ma` starts an interactive REPL; `ma -p PROMPT` runs once. The REPL shows tool calls in yellow and truncated results in grey. `/root <path>` rebuilds the agent with a new file-tool root. The internal `_build_tools()` helper constructs pre-built `ToolInfo` objects (including `bash`, built with `[config.tool.bash]` settings) that are passed to `Agent.from_config()`.
 
 **`__init__.py`** — Public API exports: `Agent`, `AgentConfig`, `AgentHooks`, `MaxTurnsHook`, `Message`, `ToolCall`, `FunctionCall`, `Usage`, `ToolInfo`, `tool`, `get_tool`, `list_tools`, `clear_registry`, `make_tools`, `make_web_tools`.
 
@@ -84,4 +84,4 @@ When both exist, per-agent tools take name-priority over global ones.
 
 ### Provider configuration
 
-`minimal-agent.toml` uses `[profiles.<name>]` sections (inheriting from `[profiles.default]`) and a `[config]` tree for app/tool settings. Read by `profiles.py` with priority `$MINIMAL_AGENT_CONFIG` > `~/minimal-agent.toml` > package-local > repo root. String values support `{{VAR_NAME}}` env var interpolation. The CLI (`minimal_cli.py`) does **not** read this file — it takes all settings as CLI flags/env vars.
+`minimal-agent.toml` uses `[profiles.<name>]` sections (inheriting from `[profiles.default]`) and a `[config]` tree for app/tool settings. Read by `profiles.py` with priority `$MINIMAL_AGENT_CONFIG` > `~/minimal-agent.toml` > package-local > repo root. String values support `{{VAR_NAME}}` env var interpolation.

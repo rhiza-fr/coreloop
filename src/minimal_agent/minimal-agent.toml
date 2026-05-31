@@ -91,7 +91,7 @@ max_timeout     = 300
 #   "\\bmkfs\\.",
 #   "\\bmkswap\\b",
 # ]
-# or, use am on_before_tool hook for more control
+# or, use an on_before_tool hook for more control
 
 # [config.tool.web_search]
 # url = "http://localhost:8888"

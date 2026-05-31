@@ -31,7 +31,7 @@ async def calculate(expression: str) -> str:
     """
     try:
         # Restricted eval: no builtins ({"__builtins__": {}}), only math functions
-        result = eval(expression, {"__builtins__": {}}, vars(math))  # noqa: S307
+        result = eval(expression, {"__builtins__": {}}, vars(math))  # noqa: S307  # nosec B307
         return str(result)
     except Exception as e:
         return f"Error: {e}"

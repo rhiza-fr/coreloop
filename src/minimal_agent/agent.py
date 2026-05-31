@@ -61,7 +61,7 @@ def _resolve_tools(
             if bash_tool is None:
                 from .tools.bash import make_bash_tool
 
-                bash_tool = make_bash_tool(root or ".")
+                bash_tool = make_bash_tool(str(root) if root else ".")
             resolved[name] = bash_tool
         else:
             info = get_tool(name)
