@@ -4,9 +4,9 @@ import pytest
 
 from minimal_agent import clear_registry
 
-# Default provider and model for tests that construct Agent.
+# Default base_url and model for tests that construct Agent.
 # These require a running Ollama instance with qwen3.5:9b.
-TEST_PROVIDER = "ollama"
+TEST_BASE_URL = "http://localhost:11434/v1"
 TEST_MODEL = "qwen3.5:9b"
 
 

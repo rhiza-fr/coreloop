@@ -3,8 +3,21 @@ name = "minimal-agent"
 version = "0.1.0"
 description = "A minimal LLM agent with tool-calling and CLI"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Chris Kilner", email = "chris@rhiza.fr" }
+]
+keywords = ["llm", "agent", "tool-calling", "openai", "ollama", "cli", "async"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 requires-python = ">=3.14"
 dependencies = [
@@ -20,7 +33,7 @@ dependencies = [
 web = ["pvl-webtools[markdown]>=0.1.0"]
 
 [project.scripts]
-ma = "minimal_agent._cli:app"
+ma = "minimal_agent.minimal_cli:app"
 
 [build-system]
 requires = ["uv_build>=0.11.2,<0.12.0"]

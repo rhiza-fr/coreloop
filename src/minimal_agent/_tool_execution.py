@@ -45,7 +45,7 @@ async def exec_tool(tc: ToolCall, agent: "Agent") -> tuple[ToolCall, str, float]
 
     logger.info("Tool call: %s(%s)", name, json.dumps(args, ensure_ascii=False) if args else "")
     t0 = time.perf_counter()
-    result = await run_tool(info, args, agent.timeout)
+    result = await run_tool(info, args, agent.tool_timeout)
     duration = time.perf_counter() - t0
     logger.info("Tool '%s' completed in %.2fs", name, duration)
 

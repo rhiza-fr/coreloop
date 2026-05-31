@@ -3,10 +3,7 @@ import tempfile
 from pathlib import Path
 
 from ..registry import ToolInfo
-from ._shared import _resolve_safe, _resolve_safe_strict, _fmt_size, _make_tool_info
-
-_MAX_EDIT_BYTES = 10 * 1024 * 1024  # 10 MB
-
+from ._shared import _fmt_size, _make_tool_info, _resolve_safe, _resolve_safe_strict
 
 def _character_line(content: str, pos: int) -> int:
     """Return the 1-based line number for character position *pos* in *content*."""
@@ -26,7 +23,7 @@ def _find_occurrence_near_line(content: str, old_text: str, target_line: int) ->
     return -1
 
 
-def make_edit_tool(root: str) -> ToolInfo:
+def make_edit_tool(root: str, *, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
     root_path = Path(root).resolve()
 
     async def edit(
@@ -35,13 +32,13 @@ def make_edit_tool(root: str) -> ToolInfo:
         new_text: str,
         line_hint: int | None = None,
     ) -> str:
-        """Replace *old_text* with *new_text* in a file (single replacement only).
+        """Use this to make a targeted edit to a file by replacing an exact string. To create a new file, pass old_text as an empty string.
 
         If *old_text* appears multiple times, ``line_hint`` is required to
         disambiguate.  Pass the 1-based line number where the text to
         replace appears.
 
-        To create a new file, pass ``old_text=""`` — the file must not already
+        To create a new file, pass ``old_text=""`` - the file must not already
         exist.  Parent directories are created automatically.
 
         Parameters
@@ -86,10 +83,10 @@ def make_edit_tool(root: str) -> ToolInfo:
         except OSError as exc:
             return f"Error: cannot stat {path!r}: {exc}"
 
-        if file_size > _MAX_EDIT_BYTES:
+        if file_size > max_bytes:
             return (
                 f"Error: {path!r} is too large to edit "
-                f"({_fmt_size(file_size)} > {_fmt_size(_MAX_EDIT_BYTES)})"
+                f"({_fmt_size(file_size)} > {_fmt_size(max_bytes)})"
             )
 
         try:
@@ -102,7 +99,11 @@ def make_edit_tool(root: str) -> ToolInfo:
 
         if not old_text:
             if content:
-                return "Error: old_text must be a non-empty string (file is not empty)"
+                return (
+                    f"Error: {path!r} already has content. "
+                    "Pass old_text with the exact text to replace. "
+                    "Empty old_text only works for creating new files."
+                )
             idx = 0
         else:
             if old_text not in content:

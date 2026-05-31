@@ -3,8 +3,8 @@
 A lightweight async tool-calling agent for any OpenAI-compatible API (via `httpx`).
 The core is an `AsyncIterator[Message]` loop you can observe and interrupt through
 lifecycle hooks, usable as a library or through a minimal REPL/one-shot CLI. It ships
-with sandboxed file tools (`read`, `edit`, `ls`, `search`) and optional web tools
-(`web_search`, `web_fetch`, via the `[web]` extra).
+with sandboxed file tools (`read`, `edit`, `ls`, `grep`) and optional web tools
+(`web_grep`, `web_fetch`, via the `[web]` extra).
 
 No MCP, no skills — just the loop, the tools, and the hooks.
 
@@ -13,7 +13,7 @@ No MCP, no skills — just the loop, the tools, and the hooks.
 
 ```bash
 pip install minimal-agent
-# with web tools (web_search, web_fetch):
+# with web tools (web_grep, web_fetch):
 pip install "minimal-agent[web]"
 ```
 
@@ -27,10 +27,10 @@ ma --model gpt-4o-mini --provider openai
 ma -p "Summarise this repo" --model gpt-4o-mini
 
 # With file tools
-ma --tools read,ls,search,edit --root .
+ma --tools read,ls,grep,edit --root .
 
 # With web tools (requires [web] and a SearXNG url)
-ma --tools web_search,web_fetch --searxng-url http://localhost:8080
+ma --tools web_grep,web_fetch --searxng-url http://localhost:8080
 
 # With thinking enabled
 ma -p "Solve this step by step" --think
@@ -44,7 +44,7 @@ ma -p "Solve this step by step" --think
 | `-m, --model` | `qwen3.5:9b` | Model name |
 | `--provider` | `ollama` | Provider (see below) |
 | `-s, --system` | — | System prompt |
-| `--tools` | — | Comma-separated tools: `read,ls,edit,search,web_search,web_fetch` |
+| `--tools` | — | Comma-separated tools: `read,ls,edit,grep,web_grep,web_fetch` |
 | `-r, --root` | cwd | Allowed root directory for file tools |
 | `--searxng-url` | `$SEARXNG_URL` | SearXNG base URL for web tools |
 | `-t, --timeout` | `60.0` | Timeout in seconds for LLM and tool calls |
@@ -62,6 +62,7 @@ Once the interactive REPL starts:
 |---------|-------------|
 | `/quit` or `/exit` or `/q` | Exit the REPL (also Ctrl-C / Ctrl-D) |
 | `/new` | Clear conversation history and start fresh |
+| `/model <name>` | Switch to a different model (history is preserved) |
 | `/root <path>` | Change the allowed root for file tools (if `--tools` was set) |
 
 ## Providers
@@ -87,7 +88,7 @@ Example:
 [defaults]
 provider = "ollama"
 model = "qwen3.5:9b"
-tools = ["read", "edit", "ls", "search"]
+tools = ["read", "edit", "ls", "grep"]
 # think = false
 # extra = {"reasoning_effort": "medium"}
 # max_turns = 20
@@ -109,7 +110,6 @@ max_turns = 30
 | Provider | Env var |
 |----------|---------|
 | `openai` | `OPENAI_API_KEY` |
-| `anthropic` | `ANTHROPIC_API_KEY` |
 | `groq` | `GROQ_API_KEY` |
 | `deepseek` | `DEEPSEEK_API_KEY` |
 | `together` | `TOGETHER_API_KEY` |
@@ -120,14 +120,14 @@ max_turns = 30
 
 ### File tools (`make_tools`)
 
-Enabled with `--tools read,ls,edit,search`. All tools are scoped to `--root` and reject path traversal.
+Enabled with `--tools read,ls,edit,grep`. All tools are scoped to `--root` and reject path traversal.
 
 | Tool | Description |
 |------|-------------|
 | `read` | Read a text file with optional `offset`/`limit` (line numbers) |
 | `ls` | List a directory |
 | `edit` | Replace an exact string in a file (single occurrence, with optional `line_hint`) |
-| `search` | Regex search via `rg`. Supports `type`, `after_context`, `files_with_matches`. Output capped at 20 000 chars. |
+| `grep` | Regex grep via `rg`. Supports `type`, `after_context`, `files_with_matches`. Output capped at 20 000 chars. |
 
 ### Web tools (`make_web_tools`)
 
@@ -137,15 +137,15 @@ Requires `pip install "minimal-agent[web]"` and a running [SearXNG](https://docs
 # Docker quick-start
 docker run -d -p 8080:8080 searxng/searxng
 
-ma --tools web_search,web_fetch --searxng-url http://localhost:8080 -p "Latest news on X"
+ma --tools web_grep,web_fetch --searxng-url http://localhost:8080 -p "Latest news on X"
 # or set the env var instead:
 export SEARXNG_URL=http://localhost:8080
-ma --tools web_search,web_fetch -p "Latest news on X"
+ma --tools web_grep,web_fetch -p "Latest news on X"
 ```
 
 | Tool | Description |
 |------|-------------|
-| `web_search` | Search via SearXNG. Returns titles, URLs, snippets. Supports `max_results`, `domain_filter`, `recency` (`all_time`, `day`, `week`, `month`, `year`). |
+| `web_grep` | Search via SearXNG. Returns titles, URLs, snippets. Supports `max_results`, `domain_filter`, `recency` (`all_time`, `day`, `week`, `month`, `year`). |
 | `web_fetch` | Fetch a URL. Returns content in `extract_mode`: `markdown` (default), `article`, `raw`, or `metadata`. |
 
 ## Library
@@ -191,7 +191,7 @@ Agent(
 )
 ```
 
-An agent has exactly the tools you list — there is no implicit inclusion of the global registry. Each entry is either a **name** (`"read"`, `"ls"`, `"edit"`, `"search"`, `"web_search"`, `"web_fetch"`, or any `@tool`-registered function) or a `ToolInfo` object (e.g. one returned by `make_tools(...)` for custom scoping). File-tool names are scoped to `root`; an unknown name raises `ValueError`.
+An agent has exactly the tools you list — there is no implicit inclusion of the global registry. Each entry is either a **name** (`"read"`, `"ls"`, `"edit"`, `"grep"`, `"web_grep"`, `"web_fetch"`, or any `@tool`-registered function) or a `ToolInfo` object (e.g. one returned by `make_tools(...)` for custom scoping). File-tool names are scoped to `root`; an unknown name raises `ValueError`.
 
 The agent core has no built-in turn limit. To bound a run, attach a hook that calls `agent.stop()`. The library ships `MaxTurnsHook` for exactly this (`from minimal_agent import MaxTurnsHook`) — it counts turns per run and is what backs the CLI's `--max-turns` flag. See `examples/hooks.py` for more hook patterns.
 

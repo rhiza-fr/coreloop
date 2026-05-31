@@ -77,7 +77,7 @@ class InjectingHook(RecordingHook):
 
 def _agent(hook: AgentHooks, tools: list[ToolInfo] | None = None) -> Agent:
     # ollama requires no API key, so Agent construction always succeeds.
-    return Agent(model="test", provider="ollama", hooks=hook, tools=tools)
+    return Agent(model="test", hooks=hook, tools=tools)
 
 
 # ── Firing-order tests ─────────────────────────────────────────────────────────

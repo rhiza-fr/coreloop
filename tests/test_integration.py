@@ -7,7 +7,7 @@ import pytest
 
 from minimal_agent import Agent, Message, tool
 from minimal_agent.types import _dump_messages
-from minimal_agent._client import stream_chat
+from minimal_agent._api_client import stream_chat
 
 
 # ── SSE helpers ────────────────────────────────────────────────
@@ -128,7 +128,7 @@ async def test_stream_chat_tool_calls():
 # ── Agent tests ────────────────────────────────────────────────
 
 def test_agent_construct():
-    agent = Agent(model="qwen3.5:9b", provider="ollama")
+    agent = Agent(model="qwen3.5:9b")
     assert not agent.stopped
 
     agent.stop()
@@ -139,7 +139,7 @@ def test_agent_construct():
 async def test_registered_tool_executes():
     """A globally registered @tool is looked up by name and run via run_tool."""
     from minimal_agent.registry import get_tool
-    from minimal_agent._execution import run_tool
+    from minimal_agent._tool_execution import run_tool
 
     @tool(allow_override=True)
     async def read(path: str) -> str:

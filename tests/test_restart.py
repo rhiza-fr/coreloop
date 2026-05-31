@@ -10,13 +10,13 @@ from minimal_agent import Agent, AgentHooks, Message
 
 def test_conversation_empty_before_run():
     """Before any run() call, conversation is an empty list."""
-    agent = Agent(model="qwen3.5:9b", provider="ollama")
+    agent = Agent(model="qwen3.5:9b", base_url="http://localhost:11434/v1")
     assert agent.messages == []
 
 
 def test_conversation_is_a_copy():
     """agent.messages returns a new list each time (defensive copy)."""
-    agent = Agent(model="qwen3.5:9b", provider="ollama")
+    agent = Agent(model="qwen3.5:9b", base_url="http://localhost:11434/v1")
     agent._messages = [
         Message(role="user", content="hi"),
         Message(role="assistant", content="hello"),
@@ -37,19 +37,18 @@ def test_public_attrs_are_readable():
     hooks = AgentHooks()
     agent = Agent(
         model="qwen3.5:9b",
-        provider="ollama",
+        base_url="http://localhost:11434/v1",
         system="You are helpful.",
-        timeout=30.0,
+        llm_timeout=30.0,
         hooks=hooks,
-        extra_body={"thinking": {"type": "disabled"}},
+        llm_extra_body={"thinking": {"type": "disabled"}},
     )
 
     assert agent.model == "qwen3.5:9b"
-    assert agent.provider == "ollama"
     assert agent.system == "You are helpful."
-    assert agent.timeout == 30.0
+    assert agent.llm_timeout == 30.0
     assert agent.hooks is hooks
-    assert agent.extra_body == {"thinking": {"type": "disabled"}}
+    assert agent.llm_extra_body == {"thinking": {"type": "disabled"}}
 
     # Mutate and re-check
     agent.model = "new-model"
@@ -58,7 +57,7 @@ def test_public_attrs_are_readable():
 
 def test_stop_resets_between_runs():
     """stop() clears the stop flag automatically on next run()."""
-    agent = Agent(model="qwen3.5:9b", provider="ollama")
+    agent = Agent(model="qwen3.5:9b", base_url="http://localhost:11434/v1")
 
     # stop once (before any run)
     agent.stop()
@@ -76,7 +75,7 @@ def test_stop_resets_between_runs():
 def test_conversation_contains_system_message():
     """Agent prepends the system message to _messages during run()."""
     agent = Agent(
-        model="qwen3.5:9b", provider="ollama",
+        model="qwen3.5:9b", base_url="http://localhost:11434/v1",
         system="You are a bot.",
     )
 
@@ -98,9 +97,9 @@ def test_conversation_contains_system_message():
 def test_restart_docstring_pattern():
     """The documented restart pattern is syntactically valid at the type level."""
     # This is a compile/type check only — no HTTP involved
-    agent = Agent(model="qwen3.5:9b", provider="ollama")
+    agent = Agent(model="qwen3.5:9b", base_url="http://localhost:11434/v1")
     agent.model = "new-model"
-    agent.extra_body = {"thinking": {"type": "disabled"}}
+    agent.llm_extra_body = {"thinking": {"type": "disabled"}}
 
     # conversation can be passed to a new run
     conv = [Message(role="user", content="hello")]

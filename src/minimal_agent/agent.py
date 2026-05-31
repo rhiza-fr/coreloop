@@ -4,22 +4,25 @@ import asyncio
 import logging
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import TYPE_CHECKING, Any, AsyncIterator
+
+if TYPE_CHECKING:
+    from .config import AgentConfig
 
 from ._cache import make_cache
-from ._client import stream_chat
-from ._config import resolve_provider
-from ._execution import exec_tool
+from ._api_client import stream_chat
+from ._tool_execution import exec_tool
 from .hooks import AgentHooks, _safe_hook
 from .registry import ToolInfo, get_tool
 from .types import Message, ToolCall, Usage, _dump_messages
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_CACHE_DIR = Path.home() / ".cache" / "minimal-agent"
+_DEFAULT_CACHE_DIR = Path.home() / ".cache" / "minimal-agent-llm-cache"
 
-_FILE_TOOL_NAMES = frozenset({"read", "ls", "edit", "search"})
+_FILE_TOOL_NAMES = frozenset({"read", "ls", "edit", "grep"})
 _WEB_TOOL_NAMES = frozenset({"web_search", "web_fetch"})
+_BASH_TOOL_NAME = "bash"
 
 
 def _resolve_tools(
@@ -35,6 +38,7 @@ def _resolve_tools(
     resolved: dict[str, ToolInfo] = {}
     file_tools: dict[str, ToolInfo] | None = None
     web_tools: dict[str, ToolInfo] | None = None
+    bash_tool: ToolInfo | None = None
 
     for item in tools:
         if isinstance(item, ToolInfo):
@@ -53,10 +57,16 @@ def _resolve_tools(
 
                 web_tools = {t.name: t for t in make_web_tools()}
             resolved[name] = web_tools[name]
+        elif name == _BASH_TOOL_NAME:
+            if bash_tool is None:
+                from .tools.bash import make_bash_tool
+
+                bash_tool = make_bash_tool(root or ".")
+            resolved[name] = bash_tool
         else:
             info = get_tool(name)
             if info is None:
-                builtins = ", ".join(sorted(_FILE_TOOL_NAMES | _WEB_TOOL_NAMES))
+                builtins = ", ".join(sorted(_FILE_TOOL_NAMES | _WEB_TOOL_NAMES | {_BASH_TOOL_NAME}))
                 raise ValueError(
                     f"Unknown tool {name!r}. Built-ins: {builtins}; "
                     "or register one with @tool."
@@ -72,7 +82,8 @@ class Agent:
 
         agent = Agent(
             model="gpt-4o-mini",
-            provider="openai",
+            base_url="https://api.openai.com/v1",
+            api_key=os.environ["OPENAI_API_KEY"],
             system="You are a helpful assistant.",
             timeout=30,
         )
@@ -97,28 +108,31 @@ class Agent:
     def __init__(
         self,
         model: str,
-        provider: str = "openai",
+        base_url: str = "http://localhost:11434/v1",
+        api_key: str | None = None,
         system: str | None = None,
         tools: Sequence[str | ToolInfo] | None = None,
         root: str | Path | None = None,
-        timeout: float = 60.0,
+        http_request_timeout: float = 300.0,
+        tool_timeout: float = 360.0,
         llm_timeout: float = 300.0,
         hooks: AgentHooks | None = None,
-        extra_body: dict[str, Any] | None = None,
+        llm_extra_body: dict[str, Any] | None = None,
         cache_dir: Path | str | None = _DEFAULT_CACHE_DIR,
     ) -> None:
         # Public — safe to read/write between runs
         self.model = model
-        self.provider = provider
         self.system = system
         self.root = root
-        self.timeout = timeout
+        self.http_request_timeout = http_request_timeout
+        self.tool_timeout = tool_timeout
         self.llm_timeout = llm_timeout
         self.hooks = hooks if hooks is not None else AgentHooks()
-        self.extra_body = extra_body
+        self.llm_extra_body = llm_extra_body
         self._cache = make_cache(cache_dir) if cache_dir is not None else None
 
-        self._provider_config = resolve_provider(provider)
+        self._base_url = base_url.rstrip("/")
+        self._api_key = api_key
         self._messages: list[Message] = []
 
         # Resolve names ('read', 'web_search', a registered @tool) and ToolInfo
@@ -133,6 +147,44 @@ class Agent:
         self._aborted = False
         # Last message produced by the current LLM turn; set in _stream_llm_response.
         self._llm_last_chunk: Message | None = None
+
+    @classmethod
+    def from_profile(
+        cls,
+        name: str = "default",
+        *,
+        config_path: "str | Path | None" = None,
+        hooks: AgentHooks | None = None,
+        tools: "Sequence[str | ToolInfo] | None" = None,
+    ) -> "Agent":
+        """Create an Agent from a named profile in .ma-config.toml.
+
+        config_path overrides the default config file location
+        (~/.ma-config.toml or MA_CONFIG_PATH env var).
+        """
+        from .profiles import resolve_profile
+        return cls.from_config(resolve_profile(name, config_path=config_path), hooks=hooks, tools=tools)
+
+    @classmethod
+    def from_config(
+        cls,
+        cfg: "AgentConfig",
+        *,
+        hooks: AgentHooks | None = None,
+        tools: "Sequence[str | ToolInfo] | None" = None,
+    ) -> "Agent":
+        """Create an Agent from an AgentConfig.
+
+        Equivalent to ``Agent(**dataclasses.asdict(cfg), hooks=hooks)``.
+        Pass ``tools`` to override with pre-built ``ToolInfo`` objects (e.g.
+        root-scoped instances that cannot be expressed as plain names in config).
+        """
+        import dataclasses
+
+        kwargs = dataclasses.asdict(cfg)
+        if tools is not None:
+            kwargs["tools"] = tools
+        return cls(**kwargs, hooks=hooks)
 
     # ── public API ────────────────────────────────────────────────
 
@@ -200,7 +252,7 @@ class Agent:
         ):
             self._messages.insert(0, Message(role="system", content=self.system))
 
-        logger.debug("Agent.run starting: model=%s provider=%s", self.model, self.provider)
+        logger.debug("Agent.run starting: model=%s base_url=%s", self.model, self._base_url)
         await _safe_hook(self.hooks, "on_before_agent", self)
         try:
             while not self._stop_event.is_set():
@@ -210,6 +262,7 @@ class Agent:
                     yield msg
 
                 if self._stop_event.is_set() or self._llm_last_chunk is None:
+                    await _safe_hook(self.hooks, "on_after_turn", self)
                     return
 
                 assistant_msg = self._llm_last_chunk
@@ -297,16 +350,15 @@ class Agent:
                 self._llm_last_chunk = replacement
             return
         try:
-            llm_deadline = self.llm_timeout if self.llm_timeout is not None else self.timeout
-            async with asyncio.timeout(llm_deadline):
+            async with asyncio.timeout(self.llm_timeout):
                 async for chunk in stream_chat(
-                    base_url=self._provider_config.base_url,
-                    api_key=self._provider_config.api_key,
+                    base_url=self._base_url,
+                    api_key=self._api_key,
                     model=self.model,
                     messages=_dump_messages(self._messages),
                     tools=self._tool_schemas(),
-                    timeout=self.timeout,
-                    extra_body=self.extra_body,
+                    timeout=self.http_request_timeout,
+                    llm_extra_body=self.llm_extra_body,
                     usage=usage,
                     cache=self._cache,
                 ):

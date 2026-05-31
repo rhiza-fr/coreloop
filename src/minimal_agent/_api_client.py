@@ -29,7 +29,7 @@ async def stream_chat(
     tools: list[dict[str, Any]] | None = None,
     timeout: float = 60.0,
     client: httpx.AsyncClient | None = None,
-    extra_body: dict[str, Any] | None = None,
+    llm_extra_body: dict[str, Any] | None = None,
     usage: Usage | None = None,
     cache: Any = None,
 ) -> AsyncIterator[Message]:
@@ -41,7 +41,7 @@ async def stream_chat(
     """
     cache_key: str | None = None
     if cache is not None:
-        cache_key = request_key(model, messages, tools, extra_body)
+        cache_key = request_key(model, messages, tools, llm_extra_body)
         cached = cache.get(cache_key)
         if cached is not None:
             logger.debug("Cache hit for model=%s messages=%d", model, len(messages))
@@ -64,8 +64,8 @@ async def stream_chat(
     if tools:
         body["tools"] = tools
     body["stream_options"] = {"include_usage": True}
-    if extra_body:
-        for k, v in extra_body.items():
+    if llm_extra_body:
+        for k, v in llm_extra_body.items():
             if k not in _PROTECTED:
                 body[k] = v
 
@@ -81,7 +81,8 @@ async def stream_chat(
     pending_message: Message | None = None
 
     _owned = client is None
-    _session = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout))
+    _verify = base_url.startswith("https://")
+    _session = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout), verify=_verify)
     _t0 = time.perf_counter()
     logger.info("POST %s model=%s messages=%d", url, model, len(messages))
     try:

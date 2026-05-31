@@ -3,6 +3,7 @@
 import inspect
 import typing
 import types
+import warnings
 from dataclasses import dataclass
 from typing import Any, Callable, Coroutine, overload
 
@@ -66,8 +67,8 @@ def _pytype_to_jsonschema(tp: type) -> dict[str, Any]:
     origin = typing.get_origin(tp)
     args = typing.get_args(tp) if origin else ()
 
-    # Union types like int | None → extract the non-None type
-    if origin is types.UnionType:
+    # Union types like int | None (types.UnionType) or Optional[int] (typing.Union)
+    if origin is types.UnionType or origin is typing.Union:
         non_none = [a for a in args if a is not type(None)]
         if len(non_none) == 1:
             # Optional[X] → use the schema for X, allow null via default
@@ -88,6 +89,11 @@ def _pytype_to_jsonschema(tp: type) -> dict[str, Any]:
         return {"type": "number"}
     if origin is bool or tp is bool:
         return {"type": "boolean"}
+    warnings.warn(
+        f"_pytype_to_jsonschema: unrecognised type {tp!r}, falling back to string. "
+        "Consider using str, int, float, bool, list[...], dict, or Optional[...] instead.",
+        stacklevel=3,
+    )
     return {"type": "string"}
 
 

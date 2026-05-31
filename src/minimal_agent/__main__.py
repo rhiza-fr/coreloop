@@ -1,5 +1,5 @@
 """Allow ``python -m minimal_agent`` to invoke the CLI."""
 
-from ._cli import app
+from .minimal_cli import app
 
 app()

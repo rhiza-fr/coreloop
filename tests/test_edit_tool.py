@@ -175,7 +175,7 @@ async def test_edit_empty_old_text(sandbox):
     edit = _edit(sandbox)
     result = await edit.fn("hello.txt", old_text="", new_text="X")
     assert "Error" in result
-    assert "non-empty" in result
+    assert "already has content" in result
 
 
 # ── Special characters ────────────────────────────────────────

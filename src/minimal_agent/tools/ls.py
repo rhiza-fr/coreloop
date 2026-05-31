@@ -4,14 +4,11 @@ from pathlib import Path
 from ..registry import ToolInfo
 from ._shared import _resolve_safe, _resolve_safe_strict, _fmt_size, _make_tool_info
 
-_MAX_LS_ENTRIES = 500
-
-
-def make_ls_tool(root: str) -> ToolInfo:
+def make_ls_tool(root: str, *, max_entries: int = 500) -> ToolInfo:
     root_path = Path(root).resolve()
 
     async def ls(path: str = ".") -> str:
-        """List files and directories inside a directory.
+        """Use this to explore directory contents before reading or editing files.
 
         Parameters
         ----------
@@ -33,7 +30,7 @@ def make_ls_tool(root: str) -> ToolInfo:
             return f"Error: cannot list {path!r}: {exc}"
 
         lines: list[str] = []
-        for name in entries[:_MAX_LS_ENTRIES]:
+        for name in entries[:max_entries]:
             full = safe_path / name
             try:
                 if full.is_symlink():
@@ -52,7 +49,7 @@ def make_ls_tool(root: str) -> ToolInfo:
             except OSError:
                 lines.append(f"{name} (?)")
 
-        remaining = len(entries) - _MAX_LS_ENTRIES
+        remaining = len(entries) - max_entries
         if remaining > 0:
             lines.append(f"... ({remaining} more entries not shown)")
 

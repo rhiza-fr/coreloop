@@ -2,14 +2,14 @@ import itertools
 from pathlib import Path
 
 from ..registry import ToolInfo
-from ._shared import _resolve_safe_strict, _fmt_size, _make_tool_info, _MAX_READ_BYTES
+from ._shared import _resolve_safe_strict, _fmt_size, _make_tool_info
 
 
-def make_read_tool(root: str, *, max_lines: int = 100) -> ToolInfo:
+def make_read_tool(root: str, *, max_lines: int = 100, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
     root_path = Path(root).resolve()
 
     async def read(path: str, offset: int = 1, limit: int = max_lines) -> str:
-        """Read the contents of a text file.
+        """Use this to read a file's contents. For large files, page through sections with offset and limit.
 
         Parameters
         ----------
@@ -25,8 +25,8 @@ def make_read_tool(root: str, *, max_lines: int = 100) -> ToolInfo:
         except ValueError as exc:
             return f"Error: {exc}"
 
-        _offset = max(0, (int(offset) if offset is not None else 1) - 1)
-        _limit = min(int(limit) if limit is not None else max_lines, max_lines)
+        _offset = max(0, int(offset) - 1)
+        _limit = min(int(limit), max_lines)
 
         if _limit <= 0:
             return "Error: limit must be a positive integer"
@@ -36,10 +36,10 @@ def make_read_tool(root: str, *, max_lines: int = 100) -> ToolInfo:
         except OSError as exc:
             return f"Error: cannot stat {path!r}: {exc}"
 
-        if file_size > _MAX_READ_BYTES:
+        if file_size > max_bytes:
             return (
                 f"Error: {path!r} is too large to read "
-                f"({_fmt_size(file_size)} > {_fmt_size(_MAX_READ_BYTES)})"
+                f"({_fmt_size(file_size)} > {_fmt_size(max_bytes)})"
             )
 
         _stop = _offset + _limit

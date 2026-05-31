@@ -35,7 +35,7 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
         domain_filter: str | None = None,
         recency: Literal["all_time", "day", "week", "month", "year"] = "all_time",
     ) -> str:
-        """Search the web via SearXNG and return titles, URLs, and snippets.
+        """Use this to find information on the web. Returns titles, URLs, and snippets for relevant pages.
 
         Parameters
         ----------
@@ -82,7 +82,7 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
         url: str,
         extract_mode: Literal["markdown", "article", "raw", "metadata"] = "markdown",
     ) -> str:
-        """Fetch a web page and return its content as markdown (or raw text).
+        """Use this to read a specific web page when you already have its URL.
 
         Parameters
         ----------
@@ -94,7 +94,7 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
             or ``metadata`` (title, description, etc.).
         """
         try:
-            result = await _web_fetch(url=url, extract_mode=extract_mode)  # type: ignore[arg-type]
+            result = await _web_fetch(url=url, extract_mode=extract_mode)
         except Exception as exc:
             return f"Error: {exc}"
         return result.content

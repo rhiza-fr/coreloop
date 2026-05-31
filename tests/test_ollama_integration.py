@@ -55,17 +55,17 @@ def agent(sandbox):
     tools = make_tools(allowed_root=sandbox)
     return Agent(
         model=MODEL,
-        provider="ollama",
+        base_url=OLLAMA_HOST,
         system="You are a helpful assistant with file tools: read, ls, edit.",
         tools=tools,
-        timeout=TIMEOUT,
+        llm_timeout=TIMEOUT,
     )
 
 
 @pytest.fixture(autouse=True)
 def _override_base_url(agent):
-    agent._provider_config.base_url = OLLAMA_HOST
-    agent._provider_config.api_key = None
+    agent._base_url = OLLAMA_HOST
+    agent._api_key = None
 
 
 # ── Helpers ───────────────────────────────────────────────────

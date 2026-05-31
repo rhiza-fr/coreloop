@@ -5,6 +5,14 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 
+class Usage(BaseModel):
+    """Token usage reported by the model."""
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
 class FunctionCall(BaseModel):
     """A function call inside a tool call."""
 
@@ -45,18 +53,10 @@ class Message(BaseModel):
     name: str | None = None
     reasoning: str | None = None
     partial: bool = False
-    usage: "Usage | None" = None
+    usage: Usage | None = None
     duration: float | None = None
     model: str | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-
-class Usage(BaseModel):
-    """Token usage reported by the model."""
-
-    prompt_tokens: int = 0
-    completion_tokens: int = 0
-    total_tokens: int = 0
 
 
 def _dump_messages(messages: list[Message]) -> list[dict]:

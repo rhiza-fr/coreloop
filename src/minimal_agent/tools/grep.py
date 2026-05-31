@@ -4,17 +4,17 @@ from pathlib import Path
 from ..registry import ToolInfo
 from ._shared import _resolve_safe_strict, _make_tool_info
 
-def make_search_tool(root: str, *, max_chars: int = 20_000, search_timeout: float = 30.0) -> ToolInfo:
+def make_grep_tool(root: str, *, max_chars: int = 20_000, search_timeout: float = 30.0) -> ToolInfo:
     root_path = Path(root).resolve()
 
-    async def search(
+    async def grep(
         pattern: str,
         path: str = ".",
         file_type: str | None = None,
         after_context: int | None = None,
         files_with_matches: bool = False,
     ) -> str:
-        """Search for a regex pattern in files using ripgrep (rg).
+        """Use this to find where a pattern, symbol, or string appears across files. Faster than reading files one by one.
 
         Parameters
         ----------
@@ -57,9 +57,9 @@ def make_search_tool(root: str, *, max_chars: int = 20_000, search_timeout: floa
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.communicate()
-                return f"Error: search timed out after {search_timeout} seconds"
+                return f"Error: grep timed out after {search_timeout} seconds"
         except FileNotFoundError:
-            return "Error: 'rg' (ripgrep) not found on PATH"
+            return "Error: 'rg' (ripgrep) not found on PATH. Install it from https://github.com/BurntSushi/ripgrep or via your package manager (e.g. 'apt install ripgrep', 'brew install ripgrep')."
         except OSError as exc:
             return f"Error: {exc}"
 
@@ -76,7 +76,7 @@ def make_search_tool(root: str, *, max_chars: int = 20_000, search_timeout: floa
             last_newline = output.rfind("\n")
             if last_newline > 0:
                 output = output[: last_newline + 1]
-            output += f"\n... (truncated — showing {max_chars} of {total_chars} characters)"
+            output += f"\n... (truncated: showing {max_chars} of {total_chars} chars)"
         return output
 
-    return _make_tool_info(search)
+    return _make_tool_info(grep)

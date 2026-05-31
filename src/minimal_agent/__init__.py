@@ -1,6 +1,7 @@
 """minimal-agent: a minimal LLM agent with tool-calling support."""
 
 from .agent import Agent
+from .config import AgentConfig
 from .tools import make_tools
 from .hooks import AgentHooks, MaxTurnsHook
 from .registry import ToolInfo, clear_registry, get_tool, list_tools, tool
@@ -9,6 +10,7 @@ from .types import FunctionCall, Message, ToolCall, Usage
 
 __all__ = [
     "Agent",
+    "AgentConfig",
     "AgentHooks",
     "FunctionCall",
     "MaxTurnsHook",
