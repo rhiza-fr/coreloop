@@ -3,6 +3,9 @@
 Requires the ``web`` extra: ``pip install minimal-agent[web]``
 """
 
+
+from typing import Literal
+
 from .registry import ToolInfo
 from .tools._shared import _make_tool_info
 
@@ -30,7 +33,7 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
         query: str,
         max_results: int = 5,
         domain_filter: str | None = None,
-        recency: str = "all_time",
+        recency: Literal["all_time", "day", "week", "month", "year"] = "all_time",
     ) -> str:
         """Search the web via SearXNG and return titles, URLs, and snippets.
 
@@ -52,7 +55,7 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
                 query=query,
                 max_results=max_results,
                 domain_filter=domain_filter or None,
-                recency=recency,  # type: ignore[arg-type]
+                recency=recency,
                 searxng_url=searxng_url,
             )
         except Exception as exc:
@@ -77,7 +80,7 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
 
     async def web_fetch(
         url: str,
-        extract_mode: str = "markdown",
+        extract_mode: Literal["markdown", "article", "raw", "metadata"] = "markdown",
     ) -> str:
         """Fetch a web page and return its content as markdown (or raw text).
 
