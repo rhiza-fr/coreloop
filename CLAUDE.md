@@ -41,7 +41,7 @@ uv run ma --tools bash --root . --model qwen3.5:9b
 # Run with thinking enabled (reasoning_effort=medium)
 uv run ma -p "your prompt here" --think --model qwen3.5:9b
 
-# Run with a named profile from .ma-config.toml
+# Run with a named profile from minimal-agent.toml
 uv run ma --profile openai -p "your prompt here"
 ```
 
@@ -53,7 +53,7 @@ The library is a minimal, dependency-light agent loop built on top of any OpenAI
 
 **`config.py`** — `AgentConfig` dataclass: a portable, serialisable bundle of Agent constructor parameters (`model`, `base_url`, `api_key`, `system`, `tools`, `root`, timeouts, `llm_extra_body`, `cache_dir`). Use `Agent.from_config(cfg)` or `dataclasses.replace(cfg, ...)` to derive variants. Hooks are excluded — they are stateful runtime objects.
 
-**`profiles.py`** — Loads `.ma-config.toml` (env var > `~/.ma-config.toml` > package-local > repo root) and resolves named profiles. Config structure: `[profiles.default]` is the base; `[profiles.<name>]` merges on top; `[config]` is a global settings tree (deep-merged with per-profile `[profiles.<name>.config]`). `{{VAR_NAME}}` in any string value is resolved from the environment. Call `resolve_profile("name")` → `AgentConfig`. Call `get_config("tool.read.max_lines", raw)` to read settings from the `[config]` tree.
+**`profiles.py`** — Loads `minimal-agent.toml` (env var > `~/minimal-agent.toml` > package-local > repo root) and resolves named profiles. Config structure: `[profiles.default]` is the base; `[profiles.<name>]` merges on top; `[config]` is a global settings tree (deep-merged with per-profile `[profiles.<name>.config]`). `{{VAR_NAME}}` in any string value is resolved from the environment. Call `resolve_profile("name")` → `AgentConfig`. Call `get_config("tool.read.max_lines", raw)` to read settings from the `[config]` tree.
 
 **`_api_client.py`** — `stream_chat()`: a raw `httpx`-based SSE streaming client that yields progressively built `Message` objects. Handles both text content and incremental tool-call assembly (stitching together streamed `tool_calls` deltas by index). Caches responses by SHA-256 request key when a cache is provided.
 
@@ -69,7 +69,7 @@ The library is a minimal, dependency-light agent loop built on top of any OpenAI
 
 **`_cache.py`** — Disk cache (via `diskcache`) for LLM responses, keyed by a SHA-256 of the request. `Agent` enables it by default (`cache_dir`); pass `cache_dir=None` to disable.
 
-**`minimal_cli.py`** — Typer CLI (`ma`). `--model` is required (or set via `MA_MODEL` env var). `--base-url` defaults to `http://localhost:11434/v1` (or `MA_BASE_URL`). Bare `ma` starts an interactive REPL; `ma -p PROMPT` runs once and prints the final response. `--tools read,edit,ls,grep,bash` enables built-in tools (scoped to `--root`). `--max-turns` caps loop iterations via `MaxTurnsHook`. Supports `--think` / `--extra` for provider-specific `extra_body` fields. Does not read `.ma-config.toml` — use `resolve_profile()` directly in code for profile-based configuration.
+**`minimal_cli.py`** — Typer CLI (`ma`). Loads `~/minimal-agent.toml` (created on first run from the bundled default) and resolves a named `--profile`. All `AgentConfig` fields can be overridden via flags (`--model`, `--base-url`, `--api-key`, `--tools`, `--root`, `--llm-timeout`, etc.). Bare `ma` starts an interactive REPL; `ma -p PROMPT` runs once. The REPL shows tool calls in yellow and truncated results in grey. `/root <path>` rebuilds the agent with a new file-tool root.
 
 **`__init__.py`** — Public API exports: `Agent`, `AgentConfig`, `AgentHooks`, `MaxTurnsHook`, `Message`, `ToolCall`, `FunctionCall`, `Usage`, `ToolInfo`, `tool`, `get_tool`, `list_tools`, `clear_registry`, `make_tools`, `make_web_tools`.
 
@@ -84,4 +84,4 @@ When both exist, per-agent tools take name-priority over global ones.
 
 ### Provider configuration
 
-`.ma-config.toml` uses `[profiles.<name>]` sections (inheriting from `[profiles.default]`) and a `[config]` tree for app/tool settings. Read by `profiles.py` with priority `$MA_CONFIG_PATH` > `~/.ma-config.toml` > package-local > repo root. String values support `{{VAR_NAME}}` env var interpolation. The CLI (`minimal_cli.py`) does **not** read this file — it takes all settings as CLI flags/env vars.
+`minimal-agent.toml` uses `[profiles.<name>]` sections (inheriting from `[profiles.default]`) and a `[config]` tree for app/tool settings. Read by `profiles.py` with priority `$MINIMAL_AGENT_CONFIG` > `~/minimal-agent.toml` > package-local > repo root. String values support `{{VAR_NAME}}` env var interpolation. The CLI (`minimal_cli.py`) does **not** read this file — it takes all settings as CLI flags/env vars.

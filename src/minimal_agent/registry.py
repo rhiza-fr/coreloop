@@ -22,21 +22,20 @@ class ToolInfo:
         """Invoke the wrapped tool function.
 
         ``@tool`` returns the ``ToolInfo``, so making it callable keeps the
-        decorated name usable directly — ``await my_tool(...)`` delegates to
+        decorated name usable directly -- ``await my_tool(...)`` delegates to
         the underlying function.
         """
         return self.fn(*args, **kwargs)
 
 
-# Global registry: tool name → ToolInfo
+# Global registry: tool name -> ToolInfo
 _TOOL_REGISTRY: dict[str, ToolInfo] = {}
 
 
 def _infer_parameters(fn: Callable) -> dict[str, Any]:
     """Build a JSON Schema for *fn* from its type annotations."""
     sig = inspect.signature(fn)
-    hints = {k: v for k, v in (getattr(fn, "__annotations__", {}) or {}).items()
-             if k != "return"}
+    hints = {k: v for k, v in (getattr(fn, "__annotations__", {}) or {}).items() if k != "return"}
 
     properties: dict[str, dict[str, Any]] = {}
     required: list[str] = []
@@ -63,7 +62,7 @@ def _infer_parameters(fn: Callable) -> dict[str, Any]:
 
 
 def _pytype_to_jsonschema(tp: type) -> dict[str, Any]:
-    """Best-effort Python type → JSON Schema type mapping."""
+    """Best-effort Python type -> JSON Schema type mapping."""
     origin = typing.get_origin(tp)
     args = typing.get_args(tp) if origin else ()
 
@@ -71,9 +70,9 @@ def _pytype_to_jsonschema(tp: type) -> dict[str, Any]:
     if origin is types.UnionType or origin is typing.Union:
         non_none = [a for a in args if a is not type(None)]
         if len(non_none) == 1:
-            # Optional[X] → use the schema for X, allow null via default
+            # Optional[X] -> use the schema for X, allow null via default
             return _pytype_to_jsonschema(non_none[0])
-        # Mixed union — fall through to generic string
+        # Mixed union -- fall through to generic string
         return {"type": "string"}
 
     if origin is list:
@@ -138,8 +137,9 @@ def tool(
     Raises ``ValueError`` if a tool with the same name is already registered,
     unless ``allow_override=True`` is passed.
     """
+
     def register(f: Callable[..., Coroutine[Any, Any, str]]) -> ToolInfo:
-        tool_name = name or getattr(f, '__name__', '')
+        tool_name = name or getattr(f, "__name__", "")
         if tool_name in _TOOL_REGISTRY and not allow_override:
             raise ValueError(
                 f"Tool {tool_name!r} is already registered. "

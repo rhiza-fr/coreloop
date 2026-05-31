@@ -16,6 +16,7 @@ from minimal_agent import Agent, Message
 
 async def ask(agent: Agent, user_input: str) -> str:
     """Append a user message, run the agent, return the final assistant reply."""
+    # Create a fresh list: agent.messages is the accumulated history from prior runs
     messages = agent.messages + [Message(role="user", content=user_input)]
     reply = ""
     async for msg in agent.run(messages):
@@ -28,6 +29,7 @@ async def main() -> None:
     agent = Agent(
         model="qwen3.5:9b",
         system="You are a helpful assistant. Keep answers brief.",
+        # system= is injected as the first Message(role="system", …) on every run
     )
 
     # Turn 1 — agent has no history yet
@@ -42,6 +44,7 @@ async def main() -> None:
     reply = await ask(agent, "How many messages have we exchanged so far?")
     print(f"Turn 3: {reply}")
 
+    # agent.messages now holds the full multi-turn history (system + all exchanges)
     print(f"\n{len(agent.messages)} messages in history")
 
 

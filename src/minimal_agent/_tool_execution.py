@@ -1,4 +1,4 @@
-"""Tool execution — argument validation, timeout handling, and error formatting."""
+"""Tool execution -- argument validation, timeout handling, and error formatting."""
 
 import asyncio
 import json
@@ -20,9 +20,7 @@ async def exec_tool(tc: ToolCall, agent: "Agent") -> tuple[ToolCall, str, float]
     """Execute a single tool call and return (call, result, duration)."""
     name = tc.function.name
     try:
-        args: dict[str, Any] = (
-            json.loads(tc.function.arguments) if tc.function.arguments else {}
-        )
+        args: dict[str, Any] = json.loads(tc.function.arguments) if tc.function.arguments else {}
     except json.JSONDecodeError as exc:
         logger.warning("Failed to parse arguments for tool '%s': %s", name, exc)
         return tc, f"Error: failed to parse arguments for '{name}': {exc}", 0.0
@@ -62,14 +60,10 @@ async def run_tool(info: ToolInfo, args: dict[str, Any], timeout: float) -> str:
     missing = required - set(args.keys())
     unknown = set(args.keys()) - allowed
     if missing:
-        return (
-            f"Error: tool '{info.name}' missing required arguments: "
-            f"{', '.join(sorted(missing))}"
-        )
+        return f"Error: tool '{info.name}' missing required arguments: {', '.join(sorted(missing))}"
     if unknown:
         return (
-            f"Error: tool '{info.name}' received unexpected arguments: "
-            f"{', '.join(sorted(unknown))}"
+            f"Error: tool '{info.name}' received unexpected arguments: {', '.join(sorted(unknown))}"
         )
 
     try:

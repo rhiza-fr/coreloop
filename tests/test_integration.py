@@ -10,61 +10,88 @@ from minimal_agent.types import _dump_messages
 from minimal_agent._api_client import stream_chat
 
 
-# ── SSE helpers ────────────────────────────────────────────────
+# -- SSE helpers ------------------------------------------------
+
 
 def _sse(data: dict) -> str:
     return f"data: {json.dumps(data)}\n\n"
 
+
 def _content_chunk(content: str, finish: bool = False) -> str:
-    return _sse({
-        "id": "chatcmpl-1",
-        "object": "chat.completion.chunk",
-        "choices": [{
-            "index": 0,
-            "delta": {"content": content} if content else {},
-            "finish_reason": "stop" if finish else None,
-        }],
-    })
+    return _sse(
+        {
+            "id": "chatcmpl-1",
+            "object": "chat.completion.chunk",
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {"content": content} if content else {},
+                    "finish_reason": "stop" if finish else None,
+                }
+            ],
+        }
+    )
+
 
 def _tool_call_chunks(name: str, args: str, call_id: str = "call_1") -> list[str]:
     return [
-        _sse({
-            "id": "chatcmpl-2",
-            "object": "chat.completion.chunk",
-            "choices": [{
-                "index": 0,
-                "delta": {
-                    "tool_calls": [{
-                        "index": 0, "id": call_id, "type": "function",
-                        "function": {"name": name, "arguments": ""},
-                    }],
-                },
-                "finish_reason": None,
-            }],
-        }),
-        _sse({
-            "id": "chatcmpl-2",
-            "object": "chat.completion.chunk",
-            "choices": [{
-                "index": 0,
-                "delta": {
-                    "tool_calls": [{
-                        "index": 0, "id": None, "type": None,
-                        "function": {"name": None, "arguments": args},
-                    }],
-                },
-                "finish_reason": None,
-            }],
-        }),
-        _sse({
-            "id": "chatcmpl-2",
-            "object": "chat.completion.chunk",
-            "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}],
-        }),
+        _sse(
+            {
+                "id": "chatcmpl-2",
+                "object": "chat.completion.chunk",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {
+                            "tool_calls": [
+                                {
+                                    "index": 0,
+                                    "id": call_id,
+                                    "type": "function",
+                                    "function": {"name": name, "arguments": ""},
+                                }
+                            ],
+                        },
+                        "finish_reason": None,
+                    }
+                ],
+            }
+        ),
+        _sse(
+            {
+                "id": "chatcmpl-2",
+                "object": "chat.completion.chunk",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {
+                            "tool_calls": [
+                                {
+                                    "index": 0,
+                                    "id": None,
+                                    "type": None,
+                                    "function": {"name": None, "arguments": args},
+                                }
+                            ],
+                        },
+                        "finish_reason": None,
+                    }
+                ],
+            }
+        ),
+        _sse(
+            {
+                "id": "chatcmpl-2",
+                "object": "chat.completion.chunk",
+                "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}],
+            }
+        ),
     ]
+
 
 def _done() -> str:
     return "data: [DONE]\n\n"
+
 
 def _mock_client(*sse_lines: str) -> httpx.AsyncClient:
     """Create an AsyncClient backed by MockTransport that serves SSE lines."""
@@ -80,7 +107,8 @@ def _mock_client(*sse_lines: str) -> httpx.AsyncClient:
     return httpx.AsyncClient(transport=httpx.MockTransport(handler))
 
 
-# ── Client tests ───────────────────────────────────────────────
+# -- Client tests -----------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_stream_chat_text():
@@ -90,7 +118,9 @@ async def test_stream_chat_text():
 
     collected: list[Message] = []
     async for msg in stream_chat(
-        base_url="http://test", api_key=None, model="m",
+        base_url="http://test",
+        api_key=None,
+        model="m",
         messages=[{"role": "user", "content": "hi"}],
         client=client,
     ):
@@ -111,7 +141,9 @@ async def test_stream_chat_tool_calls():
 
     collected: list[Message] = []
     async for msg in stream_chat(
-        base_url="http://test", api_key=None, model="m",
+        base_url="http://test",
+        api_key=None,
+        model="m",
         messages=[{"role": "user", "content": "read file"}],
         client=client,
     ):
@@ -125,7 +157,8 @@ async def test_stream_chat_tool_calls():
     assert json.loads(final.tool_calls[0].function.arguments) == {"path": "test.txt"}
 
 
-# ── Agent tests ────────────────────────────────────────────────
+# -- Agent tests ------------------------------------------------
+
 
 def test_agent_construct():
     agent = Agent(model="qwen3.5:9b")
@@ -151,7 +184,8 @@ async def test_registered_tool_executes():
     assert result == "contents of foo.txt"
 
 
-# ── Serialization test ─────────────────────────────────────────
+# -- Serialization test -----------------------------------------
+
 
 def test_dump_messages():
     """_dump_messages produces correct dict format."""

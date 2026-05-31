@@ -1,4 +1,4 @@
-"""bash.py — run shell commands via bash with safety guards.
+"""bash.py -- run shell commands via bash with safety guards.
 
 Uses ``asyncio.create_subprocess_exec`` (matching ``grep.py``'s pattern)
 with ``bash -c`` for portable command execution.
@@ -53,7 +53,12 @@ def make_bash_tool(
         Output character cap before middle-truncation kicks in.
     """
     root_path = Path(root).resolve()
-    _patterns = [re.compile(p) for p in (dangerous_patterns if dangerous_patterns is not None else DEFAULT_DANGEROUS_PATTERNS)]
+    _patterns = [
+        re.compile(p)
+        for p in (
+            dangerous_patterns if dangerous_patterns is not None else DEFAULT_DANGEROUS_PATTERNS
+        )
+    ]
 
     async def bash(
         command: str,
@@ -84,10 +89,7 @@ def make_bash_tool(
         # --- dangerous command guard ---
         for pattern in _patterns:
             if pattern.search(command):
-                return (
-                    f"Error: command matches blocked pattern "
-                    f"({pattern.pattern!r})"
-                )
+                return f"Error: command matches blocked pattern ({pattern.pattern!r})"
 
         # --- resolve working directory ---
         cwd = str(root_path)
@@ -117,9 +119,7 @@ def make_bash_tool(
                 preexec_fn=_preexec_setpgid if sys.platform != "win32" else None,
             )
             try:
-                stdout, _ = await asyncio.wait_for(
-                    proc.communicate(), timeout=_timeout
-                )
+                stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=_timeout)
             except asyncio.TimeoutError:
                 _kill_process_group(proc)
                 await proc.communicate()
@@ -190,7 +190,7 @@ def _kill_process_group(proc: asyncio.subprocess.Process) -> None:
     try:
         pgid = os.getpgid(proc.pid)
         os.killpg(pgid, signal.SIGTERM)
-    except (ProcessLookupError, PermissionError, OSError):
+    except ProcessLookupError, PermissionError, OSError:
         proc.kill()
         return
 
@@ -198,7 +198,7 @@ def _kill_process_group(proc: asyncio.subprocess.Process) -> None:
     def _force_kill() -> None:
         try:
             os.killpg(pgid, signal.SIGKILL)
-        except (ProcessLookupError, OSError):
+        except ProcessLookupError, OSError:
             pass
 
     import threading
@@ -220,15 +220,7 @@ def _resolve_bash() -> str | None:
         candidates = [
             r"C:\Program Files\Git\bin\bash.exe",
             r"C:\Program Files (x86)\Git\bin\bash.exe",
-            str(
-                Path.home()
-                / "AppData"
-                / "Local"
-                / "Programs"
-                / "Git"
-                / "bin"
-                / "bash.exe"
-            ),
+            str(Path.home() / "AppData" / "Local" / "Programs" / "Git" / "bin" / "bash.exe"),
         ]
         for candidate in candidates:
             if Path(candidate).exists():
@@ -245,4 +237,6 @@ def _bash_not_found_hint() -> str:
             "Install Git for Windows (winget install Git.Git) or "
             "ensure bash.exe is on PATH."
         )
-    return "Error: bash not found on PATH. Install bash (apt install bash, brew install bash, etc.)."
+    return (
+        "Error: bash not found on PATH. Install bash (apt install bash, brew install bash, etc.)."
+    )

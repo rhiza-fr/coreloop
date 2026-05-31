@@ -3,7 +3,7 @@
 Tests that the Agent loop works end-to-end with ``qwen3.5:9b`` on
 ``192.168.0.101``.  Skipped when the host is unreachable.
 
-Tool-calling tests are model-dependent — many local models do not emit
+Tool-calling tests are model-dependent -- many local models do not emit
 structured ``tool_calls`` in the API format even when instructed.
 Those tests are best-effort but do not fail when a model only replies
 with text; they log diagnostics instead.
@@ -26,7 +26,7 @@ def _ollama_available() -> bool:
     try:
         r = httpx.get(f"{OLLAMA_HOST}/models", timeout=5.0)
         return r.status_code == 200
-    except (httpx.ConnectError, httpx.TimeoutException):
+    except httpx.ConnectError, httpx.TimeoutException:
         return False
 
 
@@ -37,7 +37,8 @@ pytestmark = [
 ]
 
 
-# ── Fixtures ──────────────────────────────────────────────────
+# -- Fixtures --------------------------------------------------
+
 
 @pytest.fixture
 def sandbox():
@@ -68,7 +69,8 @@ def _override_base_url(agent):
     agent._api_key = None
 
 
-# ── Helpers ───────────────────────────────────────────────────
+# -- Helpers ---------------------------------------------------
+
 
 async def _collect(agent, messages: list[Message]) -> list[Message]:
     results: list[Message] = []
@@ -81,18 +83,23 @@ def _fmt(results: list[Message]) -> str:
     lines: list[str] = []
     for m in results:
         if m.role == "assistant":
-            tc = f" [tool_calls: {[t.function.name for t in (m.tool_calls or [])]}]" if m.tool_calls else ""
+            tc = (
+                f" [tool_calls: {[t.function.name for t in (m.tool_calls or [])]}]"
+                if m.tool_calls
+                else ""
+            )
             preview = (m.content or "")[:150]
-            lines.append(f"  🤖 {preview!r}{tc}")
+            lines.append(f"  [bot] {preview!r}{tc}")
         elif m.role == "tool":
             preview = (m.content or "")[:150]
-            lines.append(f"  📄 {m.name}: {preview!r}")
+            lines.append(f"  [tool] {m.name}: {preview!r}")
         else:
             lines.append(f"  {m.role}: {(m.content or '')[:150]!r}")
     return "\n".join(lines)
 
 
-# ── Core pipeline tests (model-agnostic) ──────────────────────
+# -- Core pipeline tests (model-agnostic) ----------------------
+
 
 async def test_simple_chat(agent):
     """Basic text-only query gets an assistant response (streaming works)."""
@@ -120,7 +127,7 @@ async def test_path_traversal_refused(agent):
             f"Expected denial, got: {content[:200]}"
         )
     else:
-        # Model might not have called the tool — that's OK, just log
+        # Model might not have called the tool -- that's OK, just log
         print(f"[INFO] Model did not attempt /etc/passwd read.\n{_fmt(results)}")
 
 
@@ -138,7 +145,8 @@ async def test_streaming_yields_progressive_chunks(agent):
         )
 
 
-# ── Tool-calling tests (best-effort) ──────────────────────────
+# -- Tool-calling tests (best-effort) --------------------------
+
 
 async def test_ls_tool(agent, sandbox):
     """If the model calls ls, the tool result should be correct."""
@@ -185,10 +193,12 @@ async def test_read_with_offset(agent, sandbox):
     """If the model calls read with offset/limit, verify correct line."""
     results = await _collect(
         agent,
-        [Message(
-            role="user",
-            content=f"Read line 3 from {sandbox}/data.txt using read tool with offset=3 limit=1.",
-        )],
+        [
+            Message(
+                role="user",
+                content=f"Read line 3 from {sandbox}/data.txt using read tool with offset=3 limit=1.",
+            )
+        ],
     )
     tool_msgs = [m for m in results if m.role == "tool"]
     read_msgs = [m for m in tool_msgs if m.name == "read"]
@@ -208,13 +218,15 @@ async def test_edit_then_read(agent, sandbox):
     """If the model calls edit, verify graceful handling (success or clear error)."""
     results = await _collect(
         agent,
-        [Message(
-            role="user",
-            content=(
-                f"In {sandbox}/README.md replace 'Test Project' with 'Edited Project' "
-                f"using edit tool, then read it to confirm."
-            ),
-        )],
+        [
+            Message(
+                role="user",
+                content=(
+                    f"In {sandbox}/README.md replace 'Test Project' with 'Edited Project' "
+                    f"using edit tool, then read it to confirm."
+                ),
+            )
+        ],
     )
     tool_msgs = [m for m in results if m.role == "tool"]
     edit_msgs = [m for m in tool_msgs if m.name == "edit"]
@@ -230,7 +242,7 @@ async def test_edit_then_read(agent, sandbox):
         assert "Edited Project" in read_path.read_text(encoding="utf-8"), "File not modified"
         print(f"[OK] edit succeeded: {content}")
     else:
-        # Graceful error (e.g., model sent empty arguments) — still acceptable
+        # Graceful error (e.g., model sent empty arguments) -- still acceptable
         assert "Error" in content, f"Unexpected edit result:\n{content}"
         print(f"[OK] edit gracefully handled: {content}")
 
@@ -262,4 +274,6 @@ async def test_multi_turn_conversation(agent, sandbox):
     if not read_msgs:
         pytest.skip(f"Model did not call read in turn 2.\n{_fmt(turn2)}")
 
-    print(f"[OK] Multi-turn conversation: ls → read. Read result: {(read_msgs[0].content or '')[:100]}")
+    print(
+        f"[OK] Multi-turn conversation: ls -> read. Read result: {(read_msgs[0].content or '')[:100]}"
+    )

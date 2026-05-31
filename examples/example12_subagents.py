@@ -30,11 +30,12 @@ def _make_subagent() -> Agent:
     return Agent(
         model="qwen3.5:9b",
         system="Complete the given task concisely. One short paragraph max.",
-        hooks=MaxTurnsHook(3),
+        hooks=MaxTurnsHook(3),  # Cap subagent at 3 turns to prevent runaway loops
     )
 
 
 # --- Pattern 1: single-task delegation ---
+
 
 @tool
 async def delegate(task: str) -> str:
@@ -42,12 +43,14 @@ async def delegate(task: str) -> str:
     sub = _make_subagent()
     result = ""
     async for msg in sub.run([Message(role="user", content=task)]):
+        # Skip streaming partials — we only want the final complete response
         if not msg.partial and msg.role == "assistant" and msg.content:
             result = msg.content
-    return result or "(no response)"
+    return result or "(no response)"  # Fallback if subagent produces zero non-partial messages
 
 
 # --- Pattern 2: explicit parallel dispatch ---
+
 
 @tool
 async def delegate_parallel(tasks: list[str]) -> str:
@@ -56,6 +59,7 @@ async def delegate_parallel(tasks: list[str]) -> str:
     Each task gets its own agent; all run concurrently via asyncio.gather.
     Results are returned as a numbered list.
     """
+
     async def run_one(task: str) -> str:
         sub = _make_subagent()
         result = ""
@@ -64,8 +68,9 @@ async def delegate_parallel(tasks: list[str]) -> str:
                 result = msg.content
         return result or "(no response)"
 
+    # All subagents run concurrently via gather — no explicit threading needed
     results = await asyncio.gather(*[run_one(t) for t in tasks])
-    return "\n\n".join(f"[{i+1}] {r}" for i, r in enumerate(results))
+    return "\n\n".join(f"[{i + 1}] {r}" for i, r in enumerate(results))
 
 
 async def main() -> None:
@@ -74,13 +79,17 @@ async def main() -> None:
     agent = Agent(
         model="qwen3.5:9b",
         tools=["delegate"],
-        tool_timeout=120.0,  # subagents need time; default 60s may be tight
+        tool_timeout=120.0,  # Subagents need extra time; default 60s may be too tight
         system="Use the delegate tool to answer questions you cannot answer alone.",
     )
-    async for msg in agent.run([Message(
-        role="user",
-        content="Use delegate to ask: what is the capital of France?",
-    )]):
+    async for msg in agent.run(
+        [
+            Message(
+                role="user",
+                content="Use delegate to ask: what is the capital of France?",
+            )
+        ]
+    ):
         if not msg.partial and msg.role == "assistant" and msg.content:
             print(msg.content)
 
@@ -89,18 +98,22 @@ async def main() -> None:
     agent = Agent(
         model="qwen3.5:9b",
         tools=["delegate_parallel"],
-        tool_timeout=120.0,
+        tool_timeout=120.0,  # Subagents need extra time; default 60s may be too tight
         system="Use delegate_parallel to handle multiple subtasks at once.",
     )
-    async for msg in agent.run([Message(
-        role="user",
-        content=(
-            "Use delegate_parallel to answer these three questions simultaneously: "
-            "(1) What is photosynthesis? "
-            "(2) What is the Pythagorean theorem? "
-            "(3) What is the speed of light?"
-        ),
-    )]):
+    async for msg in agent.run(
+        [
+            Message(
+                role="user",
+                content=(
+                    "Use delegate_parallel to answer these three questions simultaneously: "
+                    "(1) What is photosynthesis? "
+                    "(2) What is the Pythagorean theorem? "
+                    "(3) What is the speed of light?"
+                ),
+            )
+        ]
+    ):
         if not msg.partial and msg.role == "assistant" and msg.content:
             print(msg.content)
 
@@ -109,4 +122,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        pass
+        pass  # Suppress traceback on Ctrl+C

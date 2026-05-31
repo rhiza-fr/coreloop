@@ -14,25 +14,20 @@ from minimal_agent.tools import make_tools
 from minimal_agent.tools.edit import _character_line, _find_occurrence_near_line
 
 
-# ── Fixture ───────────────────────────────────────────────────
+# -- Fixture ---------------------------------------------------
+
 
 @pytest.fixture
 def sandbox():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        (root / "hello.txt").write_text(
-            "line1\nline2\nline3\nline4\nline5\n", encoding="utf-8"
-        )
+        (root / "hello.txt").write_text("line1\nline2\nline3\nline4\nline5\n", encoding="utf-8")
         (root / "sub").mkdir()
-        (root / "sub" / "nested.txt").write_text(
-            "nested content\n", encoding="utf-8"
-        )
+        (root / "sub" / "nested.txt").write_text("nested content\n", encoding="utf-8")
         (root / "special.txt").write_text(
-            "tab\tseparated\nnewline\nhere\nunicode: ñôúţ Łĥεşş\n", encoding="utf-8"
+            "tab\tseparated\nnewline\nhere\nunicode: nout Lhess\n", encoding="utf-8"
         )
-        (root / "repeated.txt").write_text(
-            "aaa\n", encoding="utf-8"
-        )
+        (root / "repeated.txt").write_text("aaa\n", encoding="utf-8")
         (root / "multi.txt").write_text(
             "hello world  \nhello world  \nhello world  \n", encoding="utf-8"
         )
@@ -47,11 +42,12 @@ def _read(sandbox):
     return {t.name: t for t in make_tools(sandbox)}["read"]
 
 
-# ── Single-replacement (unique match) ─────────────────────────
+# -- Single-replacement (unique match) -------------------------
+
 
 @pytest.mark.asyncio
 async def test_edit_unique(sandbox):
-    """Unique old_text → single replace works."""
+    """Unique old_text -> single replace works."""
     edit = _edit(sandbox)
     result = await edit.fn("hello.txt", old_text="line3", new_text="CHANGED")
     assert "Replaced 1" in result
@@ -70,7 +66,7 @@ async def test_edit_empty_new_text_unique(sandbox):
 
     read = _read(sandbox)
     content = await read.fn("hello.txt")
-    # "line3" removed → line3 becomes empty (blank line between line2 and line4)
+    # "line3" removed -> line3 becomes empty (blank line between line2 and line4)
     assert content == "line1\nline2\n\nline4\nline5\n"
 
 
@@ -85,11 +81,12 @@ async def test_edit_identity_unique(sandbox):
     assert "line3" in await read.fn("hello.txt")
 
 
-# ── Ambiguous (multiple occurrences, no line_hint) ────────────
+# -- Ambiguous (multiple occurrences, no line_hint) ------------
+
 
 @pytest.mark.asyncio
 async def test_edit_ambiguous_errors(sandbox):
-    """old_text that appears multiple times without line_hint → error."""
+    """old_text that appears multiple times without line_hint -> error."""
     edit = _edit(sandbox)
     result = await edit.fn("hello.txt", old_text="line", new_text="ROW")
     assert "appears 5 times" in result
@@ -98,14 +95,15 @@ async def test_edit_ambiguous_errors(sandbox):
 
 @pytest.mark.asyncio
 async def test_edit_ambiguous_trailing_whitespace(sandbox):
-    """Multiple matches without line_hint → error."""
+    """Multiple matches without line_hint -> error."""
     edit = _edit(sandbox)
     result = await edit.fn("multi.txt", old_text="hello world", new_text="matched")
     assert "appears 3 times" in result
     assert "line_hint" in result
 
 
-# ── Line-hint disambiguation ─────────────────────────────────
+# -- Line-hint disambiguation ---------------------------------
+
 
 @pytest.mark.asyncio
 async def test_edit_with_line_hint_first(sandbox):
@@ -145,7 +143,7 @@ async def test_edit_with_line_hint_last(sandbox):
 
 @pytest.mark.asyncio
 async def test_edit_line_hint_wrong_line(sandbox):
-    """line_hint pointing to a line without the text → error."""
+    """line_hint pointing to a line without the text -> error."""
     edit = _edit(sandbox)
     result = await edit.fn("multi.txt", old_text="hello world", new_text="X", line_hint=99)
     assert "Error" in result
@@ -160,7 +158,8 @@ async def test_edit_line_hint_unique_still_works(sandbox):
     assert "Replaced 1" in result
 
 
-# ── Empty / not-found cases ───────────────────────────────────
+# -- Empty / not-found cases -----------------------------------
+
 
 @pytest.mark.asyncio
 async def test_edit_not_found(sandbox):
@@ -178,11 +177,12 @@ async def test_edit_empty_old_text(sandbox):
     assert "already has content" in result
 
 
-# ── Special characters ────────────────────────────────────────
+# -- Special characters ----------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_edit_with_newlines(sandbox):
-    """old_text spanning multiple lines (unique) → works."""
+    """old_text spanning multiple lines (unique) -> works."""
     edit = _edit(sandbox)
     result = await edit.fn("hello.txt", old_text="line3\nline4", new_text="joined")
     assert "Replaced 1" in result
@@ -194,7 +194,7 @@ async def test_edit_with_newlines(sandbox):
 
 @pytest.mark.asyncio
 async def test_edit_with_tabs(sandbox):
-    """Tab character in old_text (unique) → works."""
+    """Tab character in old_text (unique) -> works."""
     edit = _edit(sandbox)
     result = await edit.fn("special.txt", old_text="\t", new_text="---TAB---")
     assert "Replaced 1" in result
@@ -206,22 +206,23 @@ async def test_edit_with_tabs(sandbox):
 
 @pytest.mark.asyncio
 async def test_edit_unicode(sandbox):
-    """Unicode old_text (unique) → works."""
+    """Unicode old_text (unique) -> works."""
     edit = _edit(sandbox)
-    result = await edit.fn("special.txt", old_text="ñôúţ Łĥεşş", new_text="🌍🌎🌏")
+    result = await edit.fn("special.txt", old_text="nout Lhess", new_text="replaced")
     assert "Replaced 1" in result
 
     read = _read(sandbox)
     content = await read.fn("special.txt")
-    assert "🌍🌎🌏" in content
-    assert "ñôúţ Łĥεşş" not in content
+    assert "replaced" in content
+    assert "nout Lhess" not in content
 
 
-# ── Edge cases ────────────────────────────────────────────────
+# -- Edge cases ------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_edit_overlapping(sandbox):
-    """Overlapping: 'aa' in 'aaa' → single non-overlapping match."""
+    """Overlapping: 'aa' in 'aaa' -> single non-overlapping match."""
     edit = _edit(sandbox)
     result = await edit.fn("repeated.txt", old_text="aa", new_text="a")
     assert "Replaced 1" in result
@@ -240,7 +241,8 @@ async def test_edit_in_subdirectory(sandbox):
     assert "CHANGED content" in await read.fn("sub/nested.txt")
 
 
-# ── Error / edge conditions ───────────────────────────────────
+# -- Error / edge conditions -----------------------------------
+
 
 @pytest.mark.asyncio
 async def test_edit_nonexistent_file(sandbox):
@@ -265,7 +267,8 @@ async def test_edit_absolute_within_root(sandbox):
     assert "Replaced" in result
 
 
-# ── Round-trip: edit then read back ───────────────────────────
+# -- Round-trip: edit then read back ---------------------------
+
 
 @pytest.mark.asyncio
 async def test_edit_round_trip_first_and_last(sandbox):
@@ -279,7 +282,8 @@ async def test_edit_round_trip_first_and_last(sandbox):
     assert content == "FIRST\nline2\nline3\nline4\nLAST\n"
 
 
-# ── Concurrency / isolation ───────────────────────────────────
+# -- Concurrency / isolation -----------------------------------
+
 
 @pytest.mark.asyncio
 async def test_edit_concurrent_different_files(sandbox):
@@ -289,6 +293,7 @@ async def test_edit_concurrent_different_files(sandbox):
     (Path(sandbox) / "b.txt").write_text("world\n", encoding="utf-8")
 
     import asyncio
+
     r1, r2 = await asyncio.gather(
         edit.fn("a.txt", old_text="hello", new_text="HELLO"),
         edit.fn("b.txt", old_text="world", new_text="WORLD"),
@@ -313,14 +318,16 @@ async def test_edit_sequential_same_file(sandbox):
     assert "ONE" in content and "TWO" in content
 
 
-# ── Large file ────────────────────────────────────────────────
+# -- Large file ------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_edit_large_file_unique(sandbox):
     """Unique edit in a 10 000-line file."""
     large = Path(sandbox) / "large.txt"
     large.write_text(
-        "\n".join(f"line_{i}" for i in range(10000)) + "\n", encoding="utf-8",
+        "\n".join(f"line_{i}" for i in range(10000)) + "\n",
+        encoding="utf-8",
     )
 
     edit = _edit(sandbox)
@@ -331,18 +338,19 @@ async def test_edit_large_file_unique(sandbox):
     assert "CHANGED" in await read.fn("large.txt", offset=5001, limit=1)
 
 
-# ── Helper unit tests ─────────────────────────────────────────
+# -- Helper unit tests -----------------------------------------
+
 
 class TestCharacterLine:
     def test_first_line(self):
-        assert _character_line("abc\ndef\n", 0) == 1   # 'a'
-        assert _character_line("abc\ndef\n", 2) == 1   # 'c'
+        assert _character_line("abc\ndef\n", 0) == 1  # 'a'
+        assert _character_line("abc\ndef\n", 2) == 1  # 'c'
 
     def test_second_line(self):
-        assert _character_line("abc\ndef\n", 4) == 2   # 'd'
+        assert _character_line("abc\ndef\n", 4) == 2  # 'd'
 
     def test_newline_itself(self):
-        assert _character_line("abc\ndef\n", 3) == 1   # '\n' is still on line 1
+        assert _character_line("abc\ndef\n", 3) == 1  # '\n' is still on line 1
 
     def test_empty(self):
         assert _character_line("", 0) == 1

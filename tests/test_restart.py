@@ -1,9 +1,8 @@
 """Tests for the agent conversation / restart pattern.
 
-These tests don't need HTTP mocking — they test the conversation
+These tests don't need HTTP mocking -- they test the conversation
 property and the restart contract directly.
 """
-
 
 from minimal_agent import Agent, AgentHooks, Message
 
@@ -67,15 +66,17 @@ def test_stop_resets_between_runs():
     # We can't easily run() without mocks, but we can verify
     # that _stop_event is not set by checking directly
     # (the flag gets cleared inside run(), which we can't call
-    # without mocks — but we can verify the contract exists)
+    # without mocks -- but we can verify the contract exists)
     import asyncio
+
     assert asyncio.Event() is not None  # just verifying it's usable
 
 
 def test_conversation_contains_system_message():
     """Agent prepends the system message to _messages during run()."""
     agent = Agent(
-        model="qwen3.5:9b", base_url="http://localhost:11434/v1",
+        model="qwen3.5:9b",
+        base_url="http://localhost:11434/v1",
         system="You are a bot.",
     )
 
@@ -83,9 +84,7 @@ def test_conversation_contains_system_message():
     agent._stop_event.clear()
     agent._messages = [Message(role="user", content="Hi")]
     if agent.system:
-        agent._messages.insert(
-            0, Message(role="system", content=agent.system)
-        )
+        agent._messages.insert(0, Message(role="system", content=agent.system))
 
     conv = agent.messages
     assert len(conv) == 2
@@ -96,7 +95,7 @@ def test_conversation_contains_system_message():
 
 def test_restart_docstring_pattern():
     """The documented restart pattern is syntactically valid at the type level."""
-    # This is a compile/type check only — no HTTP involved
+    # This is a compile/type check only -- no HTTP involved
     agent = Agent(model="qwen3.5:9b", base_url="http://localhost:11434/v1")
     agent.model = "new-model"
     agent.llm_extra_body = {"thinking": {"type": "disabled"}}

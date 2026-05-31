@@ -17,26 +17,27 @@ import math
 from minimal_agent import Agent, Message, tool
 
 
-@tool
+@tool  # Function name becomes the tool name; type hints and docstring define the schema
 async def get_current_time() -> str:
     """Return the current local time as HH:MM:SS."""
     return datetime.datetime.now().strftime("%H:%M:%S")
 
 
-@tool
+@tool  # Registers calculate() globally — visible to all Agent instances via tools=["calculate"]
 async def calculate(expression: str) -> str:
     """Evaluate a safe mathematical expression and return the result.
 
     Supports standard arithmetic and math module functions (sqrt, sin, cos, …).
     """
     try:
+        # Restricted eval: no builtins ({"__builtins__": {}}), only math functions
         result = eval(expression, {"__builtins__": {}}, vars(math))  # noqa: S307
         return str(result)
     except Exception as e:
         return f"Error: {e}"
 
 
-@tool
+@tool  # Tools are referenced by string name in Agent(tools=[...])
 async def reverse_string(text: str) -> str:
     """Return the input string reversed."""
     return text[::-1]
@@ -65,6 +66,7 @@ async def main() -> None:
                     print(f"  → {tc.function.name}({args_str})")
             if not msg.partial and msg.role == "assistant" and msg.content:
                 print(f"A: {msg.content}")
+        # Without reset(), history from this prompt would leak into the next one
         agent.reset()
         print()
 

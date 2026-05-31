@@ -5,6 +5,7 @@ from pathlib import Path
 from ..registry import ToolInfo
 from ._shared import _fmt_size, _make_tool_info, _resolve_safe, _resolve_safe_strict
 
+
 def _character_line(content: str, pos: int) -> int:
     """Return the 1-based line number for character position *pos* in *content*."""
     return content[:pos].count("\n") + 1
@@ -71,7 +72,7 @@ def make_edit_tool(root: str, *, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
                 except OSError as exc:
                     return f"Error: cannot create {path!r}: {exc}"
                 return f"Created {path!r}"
-            # file exists and old_text is empty — fall through to the empty-file check below
+            # file exists and old_text is empty -- fall through to the empty-file check below
         else:
             try:
                 safe = _resolve_safe_strict(path, root_path)
@@ -127,7 +128,7 @@ def make_edit_tool(root: str, *, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
                     f"to replace."
                 )
 
-        new_content = content[:idx] + new_text + content[idx + len(old_text):]
+        new_content = content[:idx] + new_text + content[idx + len(old_text) :]
 
         tmp_path = None
         try:

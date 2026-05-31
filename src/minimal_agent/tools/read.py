@@ -5,7 +5,9 @@ from ..registry import ToolInfo
 from ._shared import _resolve_safe_strict, _fmt_size, _make_tool_info
 
 
-def make_read_tool(root: str, *, max_lines: int = 100, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
+def make_read_tool(
+    root: str, *, max_lines: int = 100, max_bytes: int = 10 * 1024 * 1024
+) -> ToolInfo:
     root_path = Path(root).resolve()
 
     async def read(path: str, offset: int = 1, limit: int = max_lines) -> str:

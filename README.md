@@ -1,276 +1,168 @@
 # minimal-agent
 
 A lightweight async tool-calling agent for any OpenAI-compatible API (via `httpx`).
-The core is an `AsyncIterator[Message]` loop you can observe and interrupt through
-lifecycle hooks, usable as a library or through a minimal REPL/one-shot CLI. It ships
-with sandboxed file tools (`read`, `edit`, `ls`, `grep`) and optional web tools
-(`web_grep`, `web_fetch`, via the `[web]` extra).
+The core is an async generator loop that streams `Message` objects; you observe and
+intercept it via lifecycle hooks. Usable as a library or through a minimal CLI.
 
-No MCP, no skills — just the loop, the tools, and the hooks.
-
+Built-in tools: sandboxed `read`, `ls`, `edit`, `grep`, `bash`; optional `web_search`
+and `web_fetch` (via the `[web]` extra).
 
 ## Install
 
 ```bash
 pip install minimal-agent
-# with web tools (web_grep, web_fetch):
-pip install "minimal-agent[web]"
+pip install "minimal-agent[web]"   # adds web_search and web_fetch
+```
+
+## Library quick-start
+
+```python
+import asyncio
+from minimal_agent import Agent, Message
+
+agent = Agent(
+    model="gpt-4o-mini",
+    base_url="https://api.openai.com/v1",
+    api_key="sk-...",
+    tools=["read", "ls", "grep"],
+    root="/tmp/sandbox",
+)
+
+async def main():
+    async for msg in agent.run([Message(role="user", content="What files are here?")]):
+        if msg.role == "assistant" and not msg.partial and msg.content:
+            print(msg.content)
+
+asyncio.run(main())
+```
+
+Or load settings from a named profile in `~/minimal-agent.toml`:
+
+```python
+agent = Agent.from_profile("openai")
 ```
 
 ## CLI
 
+`ma` is a REPL / one-shot runner with profile support. On first run it copies
+the bundled `minimal-agent.toml` to `~/minimal-agent.toml` — edit that file to set
+your default model, tools, and provider credentials.
+
 ```bash
-# Interactive REPL
-ma --model gpt-4o-mini --provider openai
+# Interactive REPL using the default profile (Ollama)
+ma
 
-# One-shot
-ma -p "Summarise this repo" --model gpt-4o-mini
+# One-shot with a named profile
+ma --profile openai -p "Summarise this repo"
 
-# With file tools
-ma --tools read,ls,grep,edit --root .
+# Override model and enable file tools
+ma --profile openai --model gpt-4o --tools read,ls,grep --root .
 
-# With web tools (requires [web] and a SearXNG url)
-ma --tools web_grep,web_fetch --searxng-url http://localhost:8080
+# Bypass profiles entirely
+ma --base-url https://api.openai.com/v1 --api-key $OPENAI_API_KEY --model gpt-4o-mini -p "Hello"
 
-# With thinking enabled
-ma -p "Solve this step by step" --think
+# Enable reasoning
+ma --think -p "Explain this step by step" --model qwen3-14b
 ```
-
-### Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-p, --prompt` | — | Run once and print result (non-interactive) |
-| `-m, --model` | `qwen3.5:9b` | Model name |
-| `--provider` | `ollama` | Provider (see below) |
+| `--profile` | `default` | Named profile from `~/minimal-agent.toml` |
+| `-m, --model` | profile value | Model name — overrides profile (`MINIMAL_AGENT_MODEL`) |
+| `--base-url` | profile value | API base URL — overrides profile (`MINIMAL_AGENT_BASE_URL`) |
+| `--api-key` | profile value | API key — overrides profile (`MINIMAL_AGENT_API_KEY`) |
 | `-s, --system` | — | System prompt |
-| `--tools` | — | Comma-separated tools: `read,ls,edit,grep,web_grep,web_fetch` |
+| `--tools` | profile value | Comma-separated: `read,ls,edit,grep,bash,web_search,web_fetch` |
 | `-r, --root` | cwd | Allowed root directory for file tools |
 | `--searxng-url` | `$SEARXNG_URL` | SearXNG base URL for web tools |
-| `-t, --timeout` | `60.0` | Timeout in seconds for LLM and tool calls |
-| `-n, --max-turns` | `20` | Maximum agent loop iterations |
-| `--think/--no-think` | off | Enable (`medium`) or disable (`none`) reasoning_effort |
-| `-e, --extra` | — | Extra JSON body params merged into the API request |
-| `--json` | off | Output all messages as JSONL |
-| `-V, --version` | — | Show version and exit |
+| `-t, --llm-timeout` | profile value | Asyncio wall-clock timeout per LLM turn (seconds) |
+| `--tool-timeout` | profile value | Hard timeout per tool call (seconds) |
+| `--http-request-timeout` | profile value | httpx per-chunk read timeout (seconds) |
+| `--cache-dir` | profile value | LLM response cache directory |
+| `--no-cache` | off | Disable response caching |
+| `-e, --extra` | — | Extra JSON merged into the API request body |
+| `--think/--no-think` | off | Set `reasoning_effort` to `medium` / `none` |
+| `-n, --max-turns` | `20` | Maximum loop iterations |
+| `-p, --prompt` | — | Run once and print final response |
+| `--json` | off | Output all non-partial messages as JSONL |
+| `-l, --log-level` | — | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 
-### REPL commands
+REPL commands: `/quit` `/exit` `/q` to exit; `/new` to clear history;
+`/model <name>` to switch models; `/root <path>` to change the file-tool root.
 
-Once the interactive REPL starts:
-
-| Command | Description |
-|---------|-------------|
-| `/quit` or `/exit` or `/q` | Exit the REPL (also Ctrl-C / Ctrl-D) |
-| `/new` | Clear conversation history and start fresh |
-| `/model <name>` | Switch to a different model (history is preserved) |
-| `/root <path>` | Change the allowed root for file tools (if `--tools` was set) |
-
-## Providers
-
-Providers are configured in `.ma-config.toml`. Resolution order (first found wins):
-
-1. `$MA_CONFIG_PATH` env var
-2. `~/.ma-config.toml`
-3. Package-local `src/minimal_agent/.ma-config.toml`
-4. Repo root `.ma-config.toml` (for dev installs)
-
-On first run, `ma` auto-creates `~/.ma-config.toml` from the shipped default.
-
-Two top-level sections:
-
-- `[defaults]` — default provider, model, tools, and other settings
-- `[providers.<name>]` — each provider with `base_url` and optional `env_key_name`
-- `[models.<name>]` — optional per-model overrides merged on top of `[defaults]`
-
-Example:
-
-```toml
-[defaults]
-provider = "ollama"
-model = "qwen3.5:9b"
-tools = ["read", "edit", "ls", "grep"]
-# think = false
-# extra = {"reasoning_effort": "medium"}
-# max_turns = 20
-# searxng_url = "http://localhost:8888"
-
-[providers.openai]
-base_url = "https://api.openai.com/v1"
-env_key_name = "OPENAI_API_KEY"
-
-[providers.ollama]
-base_url = "http://localhost:11434/v1"
-
-# Per-model overrides — any field from [defaults] can be overridden
-[models."gpt-4o"]
-think = true
-max_turns = 30
-```
-
-| Provider | Env var |
-|----------|---------|
-| `openai` | `OPENAI_API_KEY` |
-| `groq` | `GROQ_API_KEY` |
-| `deepseek` | `DEEPSEEK_API_KEY` |
-| `together` | `TOGETHER_API_KEY` |
-| `openrouter` | `OPENROUTER_API_KEY` |
-| `ollama` | (none) |
-
-## Tools
-
-### File tools (`make_tools`)
-
-Enabled with `--tools read,ls,edit,grep`. All tools are scoped to `--root` and reject path traversal.
-
-| Tool | Description |
-|------|-------------|
-| `read` | Read a text file with optional `offset`/`limit` (line numbers) |
-| `ls` | List a directory |
-| `edit` | Replace an exact string in a file (single occurrence, with optional `line_hint`) |
-| `grep` | Regex grep via `rg`. Supports `type`, `after_context`, `files_with_matches`. Output capped at 20 000 chars. |
-
-### Web tools (`make_web_tools`)
-
-Requires `pip install "minimal-agent[web]"` and a running [SearXNG](https://docs.searxng.org/) instance.
-
-```bash
-# Docker quick-start
-docker run -d -p 8080:8080 searxng/searxng
-
-ma --tools web_grep,web_fetch --searxng-url http://localhost:8080 -p "Latest news on X"
-# or set the env var instead:
-export SEARXNG_URL=http://localhost:8080
-ma --tools web_grep,web_fetch -p "Latest news on X"
-```
-
-| Tool | Description |
-|------|-------------|
-| `web_grep` | Search via SearXNG. Returns titles, URLs, snippets. Supports `max_results`, `domain_filter`, `recency` (`all_time`, `day`, `week`, `month`, `year`). |
-| `web_fetch` | Fetch a URL. Returns content in `extract_mode`: `markdown` (default), `article`, `raw`, or `metadata`. |
-
-## Library
-
-```python
-from minimal_agent import Agent, Message, tool
-
-# Register a custom tool, then select it by name alongside the built-ins.
-@tool
-async def shout(text: str) -> str:
-    """Return text in uppercase."""
-    return text.upper()
-
-agent = Agent(
-    model="gpt-4o-mini",
-    provider="openai",
-    system="You are helpful.",
-    tools=["read", "ls", "shout"],   # built-ins + your @tool, by name
-    root="/tmp/sandbox",             # scopes the file tools
-)
-
-async for msg in agent.run([Message(role="user", content="List the files here, then read README.md")]):
-    if msg.content:
-        print(msg.content)
-
-# Full message history available after run
-print(agent.messages)
-```
-
-### `Agent`
+## `Agent`
 
 ```python
 Agent(
     model: str,
-    provider: str = "openai",
+    base_url: str = "http://localhost:11434/v1",
+    api_key: str | None = None,
     system: str | None = None,
-    tools: list[str | ToolInfo] | None = None,  # names and/or ToolInfo objects
-    root: str | Path | None = None,             # allowed root for file tools (default cwd)
-    timeout: float = 60.0,
+    tools: list[str | ToolInfo] | None = None,
+    root: str | Path | None = None,
+    http_request_timeout: float = 300.0,  # httpx per-chunk read timeout
+    tool_timeout: float = 360.0,          # hard wall per tool call
+    llm_timeout: float = 300.0,           # asyncio wall for the entire LLM turn
     hooks: AgentHooks | None = None,
-    extra_body: dict | None = None,
-    cache_dir: Path | str | None = "~/.cache/minimal-agent",  # None disables caching
+    llm_extra_body: dict | None = None,
+    cache_dir: Path | str | None = "~/.cache/minimal-agent-llm-cache",
 )
 ```
 
-An agent has exactly the tools you list — there is no implicit inclusion of the global registry. Each entry is either a **name** (`"read"`, `"ls"`, `"edit"`, `"grep"`, `"web_grep"`, `"web_fetch"`, or any `@tool`-registered function) or a `ToolInfo` object (e.g. one returned by `make_tools(...)` for custom scoping). File-tool names are scoped to `root`; an unknown name raises `ValueError`.
+`tools` accepts built-in names (`"read"`, `"ls"`, `"edit"`, `"grep"`, `"bash"`,
+`"web_search"`, `"web_fetch"`), names of `@tool`-registered functions, or `ToolInfo`
+objects. File tools are scoped to `root`; an unknown name raises `ValueError`. An agent
+has exactly the tools you list — there is no implicit inclusion of the global registry.
 
-The agent core has no built-in turn limit. To bound a run, attach a hook that calls `agent.stop()`. The library ships `MaxTurnsHook` for exactly this (`from minimal_agent import MaxTurnsHook`) — it counts turns per run and is what backs the CLI's `--max-turns` flag. See `examples/hooks.py` for more hook patterns.
+`run(messages)` is an async generator. Partial streaming chunks have `partial=True`;
+the final assembled message for each LLM turn has `partial=False`. Pass
+`usage=Usage()` to accumulate token counts across turns.
 
-`agent.run(messages)` is an async generator that yields `Message` objects as they stream. It accepts an optional `usage` keyword argument — a mutable `Usage` object that cumulative token counts are added to after each LLM turn (requires provider support).
+| Method / property | Description |
+|---|---|
+| `run(messages, *, usage=None)` | Run the agent loop, yielding `Message` objects |
+| `stop()` | Finish the current turn cleanly, then exit. Safe from a hook or tool. |
+| `abort()` | Cancel immediately; `on_after_agent` is not called |
+| `reset()` | Clear history and stop flag |
+| `stopped` | `True` after `stop()` or `abort()` |
+| `messages` | Shallow copy of full chat history from the last `run()` |
 
-| Method | Description |
-|--------|-------------|
-| `stop()` | Finish the current turn cleanly, then exit the loop. Safe to call from a tool or hook; `on_after_agent` still fires. |
-| `abort()` | Halt immediately, abandoning in-flight tools. `on_after_agent` is **not** called. |
-| `reset()` | Clear message history and reset the stop flag |
-| `stopped` (property) | Whether `stop()` or `abort()` has been called |
-| `messages` (property) | Shallow copy of the full chat history from the last `run()` |
-
-**Restart pattern** — pass `agent.messages` to a second `run()` to keep history:
+**Restart pattern** — pass `agent.messages` to keep history across runs:
 
 ```python
-async for msg in agent.run([Message(role="user", content="Hi")]):
+async for msg in agent.run([Message(role="user", content="Hello")]):
     ...
 
-# Restart with a different model, keeping the conversation
-agent.model = "better-model"
-async for msg in agent.run(agent.messages):
+agent.model = "stronger-model"
+async for msg in agent.run(agent.messages + [Message(role="user", content="Now do X")]):
     ...
 ```
 
-### `Message`
+## Built-in tools
 
-Pydantic model matching the OpenAI chat format:
+All file tools reject path traversal and are scoped to `root`.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `role` | `str` | `"user"`, `"assistant"`, `"system"`, or `"tool"` |
-| `content` | `str \| None` | Text content (`None` when `tool_calls` is set) |
-| `tool_calls` | `list[ToolCall] \| None` | Tool calls emitted by the assistant |
-| `tool_call_id` | `str \| None` | Tool call ID (for `role="tool"` messages) |
-| `name` | `str \| None` | Tool name (for `role="tool"` messages) |
-| `reasoning` | `str \| None` | Streaming-only field from thinking models (Qwen3, DeepSeek). Omitted from conversation history sent back to the API. |
-| `partial` | `bool` | `True` for streaming delta chunks; `False` for the final assembled message |
-| `usage` | `Usage \| None` | Token usage reported by the model |
-| `duration` | `float \| None` | Tool execution duration in seconds |
-| `model` | `str \| None` | Model name that generated this message |
-| `timestamp` | `datetime` | When the message was created (UTC) |
+| Tool | Description |
+|------|-------------|
+| `read` | Read a text file; `offset`/`limit` for paging (1-based line numbers) |
+| `ls` | List a directory |
+| `edit` | Replace an exact string in a file; fails on ambiguous matches |
+| `grep` | Regex search via `rg`; supports `type`, `after_context`, `files_with_matches` |
+| `bash` | Run shell commands via `bash -c`; blocks dangerous patterns; kills the entire process group on timeout |
 
-### `ToolInfo`
+Web tools require `pip install "minimal-agent[web]"` and a running
+[SearXNG](https://docs.searxng.org/) instance:
 
-```python
-@dataclass
-class ToolInfo:
-    name: str
-    description: str
-    parameters: dict[str, Any]  # JSON Schema
-    fn: Callable[..., Coroutine[Any, Any, str]]
+```bash
+docker run -d -p 8080:8080 searxng/searxng
 ```
 
-### `ToolCall` / `FunctionCall`
+| Tool | Description |
+|------|-------------|
+| `web_search` | Search via SearXNG; returns titles, URLs, snippets; supports `max_results`, `domain_filter`, `recency` |
+| `web_fetch` | Fetch a URL; `extract_mode`: `markdown` (default), `article`, `raw`, `metadata` |
 
-```python
-class ToolCall(BaseModel):
-    id: str
-    type: str = "function"
-    function: FunctionCall
-
-class FunctionCall(BaseModel):
-    name: str = ""
-    arguments: str = ""  # JSON-encoded
-```
-
-### `Usage`
-
-```python
-class Usage(BaseModel):
-    prompt_tokens: int = 0
-    completion_tokens: int = 0
-    total_tokens: int = 0
-```
-
-### Custom tools
-
-Use the `@tool` decorator to register a tool by name, or pass closures directly as `ToolInfo` for per-agent state (see `make_tools` source for the pattern).
+## Custom tools
 
 ```python
 from minimal_agent import tool
@@ -280,38 +172,127 @@ async def read_env(name: str) -> str:
     """Read an environment variable."""
     import os
     return os.environ.get(name, "(not set)")
+
+# Attach by name or pass the ToolInfo object directly
+agent = Agent(model="...", tools=["read_env"])
+agent = Agent(model="...", tools=[read_env])  # equivalent
 ```
 
-Registering does not attach the tool to any agent — list it explicitly to use it: `Agent(..., tools=["read_env"])` (or pass the decorated object: `tools=[read_env]`). To register under a different name or with a description:
+`@tool` infers JSON Schema from type annotations (`str`, `int`, `float`, `bool`,
+`list[T]`, `dict`, `Optional[T]`). Unrecognised types fall back to `string` with a
+warning. Override name or description:
 
 ```python
-@tool(name="my_read", description="Read a file")
-async def read(path: str) -> str:
+@tool(name="my_read", description="Read a local file")
+async def _impl(path: str) -> str:
     ...
 
-@tool(allow_override=True)  # re-register even if a tool with that name exists
-async def override(name: str) -> str:
+@tool(allow_override=True)   # re-register if a tool with that name already exists
+async def read_env(name: str) -> str:
     ...
 ```
 
-### Registry helpers
+The decorated object is both a `ToolInfo` and directly callable (`await my_tool(...)`
+works alongside registration).
+
+Registry helpers:
 
 ```python
 from minimal_agent import list_tools, get_tool, clear_registry
 
-list_tools()            # all globally registered tools (list[ToolInfo])
-get_tool("read")        # look one up by name (ToolInfo | None)
-clear_registry()        # remove all registered tools (useful in tests)
+list_tools()          # list[ToolInfo] — all globally registered tools
+get_tool("read_env")  # ToolInfo | None
+clear_registry()      # remove all tools (useful in tests)
 ```
 
-A `@tool`-decorated function stays callable — the returned `ToolInfo` delegates
-to the wrapped coroutine, so `await my_tool(...)` works as well as registration.
+## Hooks
 
-### Caching
+Subclass `AgentHooks` to observe or intercept any stage of the loop:
 
-LLM responses are disk-cached by default (in `~/.cache/minimal-agent/`) to avoid re-sending identical requests. Use `cache_dir` to choose a location, or `cache_dir=None` to disable:
+```python
+from minimal_agent import AgentHooks
+
+class LogHook(AgentHooks):
+    async def on_before_tool(self, agent, name, args):
+        print(f"→ {name}({args})")
+        return None  # None = run the tool; return str to inject a result instead
+
+agent = Agent(..., hooks=LogHook())
+```
+
+Hook firing order per turn:
+
+```
+on_before_turn
+on_before_llm   → return Message to skip the LLM call entirely
+  <LLM streams>
+on_after_llm    → return Message to replace before appending to history
+  for each tool (in parallel):
+    on_before_tool  → return str to skip tool execution
+      <tool runs>
+    on_after_tool   → return str to replace result in history
+on_after_turn
+```
+
+`on_before_agent` / `on_after_agent` bracket the entire `run()` call.
+`on_after_agent` is **not** called after `abort()`. Hook exceptions are logged and
+swallowed — they cannot crash the agent.
+
+`MaxTurnsHook(n)` calls `agent.stop()` after `n` turns; the counter resets on each
+`run()`, so it enforces a per-run limit, not a lifetime one.
+
+## Config profiles
+
+`Agent.from_profile("openai")` builds an `AgentConfig` from `~/minimal-agent.toml`
+(or `$MINIMAL_AGENT_CONFIG`). Every profile inherits from `[profiles.default]`; named
+profiles override individual keys.
+
+```toml
+[profiles.default]
+base_url = "http://localhost:11434/v1"
+model    = "qwen3.5:9b"
+
+[profiles.openai]
+base_url = "https://api.openai.com/v1"
+api_key  = "{{OPENAI_API_KEY}}"
+model    = "gpt-4o-mini"
+tools    = ["read", "ls", "grep"]
+
+[profiles.together]
+base_url = "https://api.together.xyz/v1"
+api_key  = "{{TOGETHER_API_KEY}}"
+```
+
+`{{VAR_NAME}}` in any string value is interpolated from the environment. Unknown keys
+are silently ignored. The shipped `src/minimal_agent/minimal-agent.toml` includes
+pre-configured profiles for Ollama, OpenAI, Groq, DeepSeek, Together, and OpenRouter.
+
+`AgentConfig` is a dataclass mirroring the `Agent` constructor (excluding hooks). Use
+`dataclasses.replace(cfg, model="other")` to derive variants, or `Agent.from_config(cfg)`
+to construct an agent from one.
+
+## `Message`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `role` | `str` | `"user"`, `"assistant"`, `"system"`, `"tool"` |
+| `content` | `str \| None` | Text content; `None` when `tool_calls` is set |
+| `tool_calls` | `list[ToolCall] \| None` | Tool calls emitted by the assistant |
+| `tool_call_id` | `str \| None` | Links a `"tool"` message to its call |
+| `name` | `str \| None` | Tool name on `role="tool"` messages |
+| `reasoning` | `str \| None` | Thinking-model scratchpad (Qwen3, DeepSeek). Not sent back to the API. |
+| `partial` | `bool` | `True` for streaming delta chunks |
+| `usage` | `Usage \| None` | Token counts from the model |
+| `duration` | `float \| None` | Tool execution time in seconds |
+| `timestamp` | `datetime` | UTC creation time |
+
+## Caching
+
+LLM responses are disk-cached by default (`~/.cache/minimal-agent-llm-cache/`), keyed
+by SHA-256 of (model, messages, tools, extra_body). This replays identical requests
+without hitting the API — useful during development. Pass `cache_dir=None` to disable.
 
 ```python
 agent = Agent(model="...", cache_dir="/tmp/my-cache")  # custom location
-agent = Agent(model="...", cache_dir=None)             # caching disabled
+agent = Agent(model="...", cache_dir=None)             # disabled
 ```

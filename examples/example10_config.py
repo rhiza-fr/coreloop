@@ -25,14 +25,20 @@ base_config = AgentConfig(
 )
 
 # Derive a variant with a smaller model and tighter timeouts.
-fast_config = replace(base_config, model="qwen3:0.6b", llm_timeout=30.0)
+fast_config = replace(
+    base_config, model="qwen3:0.6b", llm_timeout=30.0
+)  # replace() copies base_config, overriding only listed fields
 
 # Derive a variant that adds file tools.
-file_config = replace(base_config, tools=["read", "ls", "grep"], root=".")
+file_config = replace(
+    base_config, tools=["read", "ls", "grep"], root="."
+)  # non-tool inherits system prompt from base_config
 
 
 async def run(cfg: AgentConfig, prompt: str) -> None:
-    agent = Agent.from_config(cfg)
+    agent = Agent.from_config(
+        cfg
+    )  # factory method: unpacks the dataclass fields into Agent() constructor kwargs
     async for msg in agent.run([Message(role="user", content=prompt)]):
         if not msg.partial and msg.role == "assistant" and msg.content:
             print(msg.content)

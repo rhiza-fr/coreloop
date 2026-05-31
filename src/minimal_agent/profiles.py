@@ -1,4 +1,4 @@
-"""Configuration loaded from .ma-config.toml: named profiles with default merging.
+"""Configuration loaded from minimal-agent.toml: named profiles with default merging.
 
 Profile resolution:
   1. Load [profiles.default] as the base.
@@ -7,7 +7,7 @@ Profile resolution:
   4. Resolve {{VAR_NAME}} in any string value from the environment.
   5. Strip non-AgentConfig keys and return AgentConfig.
 
-The special name "default" is the base — every other profile inherits from it.
+The special name "default" is the base -- every other profile inherits from it.
 [config] is the global settings tree; profiles can override any sub-key.
 """
 
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 from dotenv import load_dotenv
 
-_CONFIG_FILENAME = ".ma-config.toml"
+_CONFIG_FILENAME = "minimal-agent.toml"
 _TEMPLATE_RE = re.compile(r"\{\{(\w+)\}\}")
 
 load_dotenv()
@@ -35,7 +35,7 @@ def config_path() -> Path:
 
 
 def _find_config_path() -> Path:
-    if env := os.environ.get("MA_CONFIG_PATH"):
+    if env := os.environ.get("MINIMAL_AGENT_CONFIG"):
         return Path(env)
     home_config = Path.home() / _CONFIG_FILENAME
     if home_config.exists():
@@ -59,7 +59,7 @@ def _load_config(path: Path | None = None) -> dict[str, Any]:
     if not p.exists():
         msg = (
             f"Config file not found at {p}. "
-            f"Create ~/{_CONFIG_FILENAME} or set MA_CONFIG_PATH."
+            f"Create ~/{_CONFIG_FILENAME} or set MINIMAL_AGENT_CONFIG."
         )
         raise FileNotFoundError(msg)
     return tomllib.loads(p.read_bytes().decode("utf-8"))
@@ -102,7 +102,7 @@ def _load_merged_profile(name: str, config_path: Path | str | None = None) -> di
 
     Top-level profile keys are shallow-merged (named profile wins over default).
     The [config] tree is deep-merged: global < default profile < named profile.
-    Includes all keys — callers that only need AgentConfig should use resolve_profile().
+    Includes all keys -- callers that only need AgentConfig should use resolve_profile().
     """
     raw = _load_config(Path(config_path) if config_path else None)
     profiles = raw.get("profiles", {})
@@ -128,11 +128,17 @@ def _load_merged_profile(name: str, config_path: Path | str | None = None) -> di
     return merged
 
 
-def get_config(key: str, raw_profile: dict[str, Any] | None = None, default: Any = None, *, config_path: Path | str | None = None) -> Any:
+def get_config(
+    key: str,
+    raw_profile: dict[str, Any] | None = None,
+    default: Any = None,
+    *,
+    config_path: Path | str | None = None,
+) -> Any:
     """Look up a dot-path key in the [config] tree.
 
-    get_config("tool.web_search.url", raw)   — uses merged profile config
-    get_config("tool.web_search.url")         — uses global [config] only
+    get_config("tool.web_search.url", raw)   -- uses merged profile config
+    get_config("tool.web_search.url")         -- uses global [config] only
 
     {{VAR_NAME}} interpolation is applied to string values.
     Returns default if the key is absent or the path is invalid.
@@ -152,12 +158,14 @@ def get_config(key: str, raw_profile: dict[str, Any] | None = None, default: Any
     return _interpolate(node) if isinstance(node, str) else node
 
 
-def resolve_profile(name: str = "default", *, config_path: Path | str | None = None) -> "AgentConfig":
+def resolve_profile(
+    name: str = "default", *, config_path: Path | str | None = None
+) -> "AgentConfig":
     """Return an AgentConfig for the named profile.
 
     Merges [profiles.default] as base, then [profiles.<name>] on top.
     {{VAR_NAME}} in any string value is resolved from the environment.
-    Unknown keys (config, max_turns, searxng_url, …) are silently ignored.
+    Unknown keys (config, max_turns, searxng_url, ...) are silently ignored.
     """
     import dataclasses
 

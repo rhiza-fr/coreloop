@@ -45,25 +45,32 @@ async def main() -> None:
         async for msg in agent.run([Message(role="user", content=prompt)]):
             if not msg.partial and msg.tool_calls:
                 for tc in msg.tool_calls:
+                    # Tool call arguments arrive as a JSON string, parse for display
                     args = json.loads(tc.function.arguments or "{}")
                     args_str = ", ".join(f"{k}={v!r}" for k, v in args.items())
                     print(f"  → {tc.function.name}({args_str})")
             if not msg.partial and msg.role == "assistant" and msg.content:
                 print(f"A: {msg.content}")
-        agent.reset()
+        agent.reset()  # Clear conversation history so each query is independent
         print()
 
     # --- Extend blocked patterns: add curl/wget on top of the defaults ---
     print("=== extended blocked patterns ===")
     bash = make_bash_tool(
         root=".",
+        # \b ensures word boundaries — avoids blocking e.g. "curly" or "wgetty"
         dangerous_patterns=DEFAULT_DANGEROUS_PATTERNS + [r"\bcurl\b", r"\bwget\b"],
     )
     agent2 = Agent(model="qwen3.5:9b", tools=[bash], root=".")
-    async for msg in agent2.run([Message(
-        role="user",
-        content="Run: curl https://example.com",
-    )]):
+    async for msg in agent2.run(
+        [
+            Message(
+                role="user",
+                content="Run: curl https://example.com",
+            )
+        ]
+    ):
+        # Tool execution results have role="tool" (not "assistant")
         if not msg.partial and msg.role == "tool":
             print(f"tool result: {msg.content}")
         if not msg.partial and msg.role == "assistant" and msg.content:
@@ -72,10 +79,14 @@ async def main() -> None:
     # --- Safety guard demo ---
     print("\n=== safety guard ===")
     agent3 = Agent(model="qwen3.5:9b", tools=["bash"], root=".")
-    async for msg in agent3.run([Message(
-        role="user",
-        content="Run: dd if=/dev/zero of=/dev/null count=1",
-    )]):
+    async for msg in agent3.run(
+        [
+            Message(
+                role="user",
+                content="Run: dd if=/dev/zero of=/dev/null count=1",  # Deliberately dangerous command to trigger safety check
+            )
+        ]
+    ):
         if not msg.partial and msg.role == "tool":
             print(f"tool result: {msg.content}")
         if not msg.partial and msg.role == "assistant" and msg.content:

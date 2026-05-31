@@ -1,4 +1,4 @@
-"""AgentConfig — a portable, serialisable bundle of Agent constructor parameters.
+"""AgentConfig -- a portable, serialisable bundle of Agent constructor parameters.
 
 Use with Agent.from_config(), or use dataclasses.replace() to derive variants:
 
@@ -9,7 +9,7 @@ Use with Agent.from_config(), or use dataclasses.replace() to derive variants:
     fast = replace(base, model="qwen3:0.6b", timeout=10.0)
     agent = Agent.from_config(fast)
 
-Hooks are intentionally excluded — they are stateful runtime objects, not config.
+Hooks are intentionally excluded -- they are stateful runtime objects, not config.
 """
 
 from dataclasses import dataclass, field

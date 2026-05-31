@@ -1,4 +1,4 @@
-"""AgentHooks — lifecycle callbacks for the agent loop.
+"""AgentHooks -- lifecycle callbacks for the agent loop.
 
 Hooks fire in this order during a single agent.run() call:
 
@@ -15,7 +15,7 @@ Hooks fire in this order during a single agent.run() call:
             # Return a Message to replace what gets appended to conversation
             # history.  Return None to use the message as-is.
             # Note: the streamed content has already been yielded to the
-            # caller — the replacement only affects conversation history.
+            # caller -- the replacement only affects conversation history.
 
         if the LLM requested tool calls:
             for each tool (in parallel):
@@ -30,7 +30,7 @@ Hooks fire in this order during a single agent.run() call:
         on_after_turn(agent)            # fires every turn, with or without tools
 
     on_after_agent(agent)
-    # NOT called after agent.abort() — only after natural end or stop().
+    # NOT called after agent.abort() -- only after natural end or stop().
 
 All hooks are called via _safe_hook, which catches and logs any exception
 rather than propagating it.  Hook bugs cannot crash the agent.  To request
@@ -79,7 +79,9 @@ class AgentHooks:
         """
         return None
 
-    async def on_after_tool(self, agent: Agent, name: str, args: dict[str, Any], result: str) -> str | None:
+    async def on_after_tool(
+        self, agent: Agent, name: str, args: dict[str, Any], result: str
+    ) -> str | None:
         """Called after a tool executes with its result.
 
         Return a str to replace the result that gets appended to conversation

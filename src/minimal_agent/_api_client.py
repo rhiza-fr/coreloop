@@ -74,7 +74,7 @@ async def stream_chat(
     accumulated_content: str | None = ""
     accumulated_reasoning: str | None = ""
     accumulated_tool_calls: list[ToolCall] | None = None
-    # For incremental tool-call building: index → partial ToolCall
+    # For incremental tool-call building: index -> partial ToolCall
     partials: dict[int, dict[str, Any]] = {}
     captured_usage: Usage | None = None
     # Assembled on finish_reason; held until [DONE] so usage chunk can arrive first
@@ -149,11 +149,14 @@ async def stream_chat(
                         accumulated_tool_calls = []
                     for tc_delta in raw_tool_calls:
                         idx = tc_delta.get("index", 0)
-                        partial = partials.setdefault(idx, {
-                            "id": "",
-                            "type": "function",
-                            "function": {"name": "", "arguments": ""},
-                        })
+                        partial = partials.setdefault(
+                            idx,
+                            {
+                                "id": "",
+                                "type": "function",
+                                "function": {"name": "", "arguments": ""},
+                            },
+                        )
                         if "id" in tc_delta and tc_delta["id"]:
                             partial["id"] = tc_delta["id"]
                         if "function" in tc_delta:
@@ -189,7 +192,7 @@ async def stream_chat(
         # Yield the final message after [DONE] so usage is populated
         _duration = time.perf_counter() - _t0
         logger.debug(
-            "Response from %s in %.2fs — usage: %s",
+            "Response from %s in %.2fs -- usage: %s",
             model,
             _duration,
             captured_usage,

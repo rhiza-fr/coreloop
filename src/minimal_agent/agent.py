@@ -1,4 +1,4 @@
-"""The Agent — orchestrates the LLM loop with tool execution."""
+"""The Agent -- orchestrates the LLM loop with tool execution."""
 
 import asyncio
 import logging
@@ -68,8 +68,7 @@ def _resolve_tools(
             if info is None:
                 builtins = ", ".join(sorted(_FILE_TOOL_NAMES | _WEB_TOOL_NAMES | {_BASH_TOOL_NAME}))
                 raise ValueError(
-                    f"Unknown tool {name!r}. Built-ins: {builtins}; "
-                    "or register one with @tool."
+                    f"Unknown tool {name!r}. Built-ins: {builtins}; or register one with @tool."
                 )
             resolved[name] = info
     return resolved
@@ -91,8 +90,8 @@ class Agent:
         async for msg in agent.run([Message(role="user", content="Hello!")]):
             print(msg)
 
-    After ``run()`` completes (or is stopped), the full message history —
-    including system prompt, assistant responses, and tool results — is
+    After ``run()`` completes (or is stopped), the full message history --
+    including system prompt, assistant responses, and tool results -- is
     available via ``agent.messages``.  You can copy it to a new agent to
     restart::
 
@@ -120,7 +119,7 @@ class Agent:
         llm_extra_body: dict[str, Any] | None = None,
         cache_dir: Path | str | None = _DEFAULT_CACHE_DIR,
     ) -> None:
-        # Public — safe to read/write between runs
+        # Public -- safe to read/write between runs
         self.model = model
         self.system = system
         self.root = root
@@ -137,10 +136,8 @@ class Agent:
 
         # Resolve names ('read', 'web_search', a registered @tool) and ToolInfo
         # objects into this agent's tool set. The agent only has the tools listed
-        # here — there is no implicit inclusion of the global registry.
-        self._tools: dict[str, ToolInfo] = (
-            _resolve_tools(tools, root) if tools else {}
-        )
+        # here -- there is no implicit inclusion of the global registry.
+        self._tools: dict[str, ToolInfo] = _resolve_tools(tools, root) if tools else {}
 
         self._stop_event = asyncio.Event()
         self._current_task: asyncio.Task[None] | None = None
@@ -157,13 +154,16 @@ class Agent:
         hooks: AgentHooks | None = None,
         tools: "Sequence[str | ToolInfo] | None" = None,
     ) -> "Agent":
-        """Create an Agent from a named profile in .ma-config.toml.
+        """Create an Agent from a named profile in minimal-agent.toml.
 
         config_path overrides the default config file location
-        (~/.ma-config.toml or MA_CONFIG_PATH env var).
+        (~/minimal-agent.toml or MINIMAL_AGENT_CONFIG env var).
         """
         from .profiles import resolve_profile
-        return cls.from_config(resolve_profile(name, config_path=config_path), hooks=hooks, tools=tools)
+
+        return cls.from_config(
+            resolve_profile(name, config_path=config_path), hooks=hooks, tools=tools
+        )
 
     @classmethod
     def from_config(
@@ -186,7 +186,7 @@ class Agent:
             kwargs["tools"] = tools
         return cls(**kwargs, hooks=hooks)
 
-    # ── public API ────────────────────────────────────────────────
+    # -- public API ------------------------------------------------
 
     @property
     def messages(self) -> list[Message]:
@@ -201,7 +201,7 @@ class Agent:
     def stop(self) -> None:
         """Signal the agent to finish the current turn and stop cleanly.
 
-        Safe to call from inside a tool or hook — sets the stop flag without
+        Safe to call from inside a tool or hook -- sets the stop flag without
         cancelling the task, so the current turn completes normally and
         ``on_after_agent`` is called before the loop exits.
         """
@@ -247,9 +247,7 @@ class Agent:
         self._current_task = asyncio.current_task()
         self._messages = list(messages)
 
-        if self.system and not (
-            self._messages and self._messages[0].role == "system"
-        ):
+        if self.system and not (self._messages and self._messages[0].role == "system"):
             self._messages.insert(0, Message(role="system", content=self.system))
 
         logger.debug("Agent.run starting: model=%s base_url=%s", self.model, self._base_url)
@@ -289,7 +287,7 @@ class Agent:
 
         except asyncio.CancelledError:
             if self._stop_event.is_set():
-                pass  # abort() — swallow
+                pass  # abort() -- swallow
             else:
                 raise
         finally:
@@ -297,7 +295,7 @@ class Agent:
                 await _safe_hook(self.hooks, "on_after_agent", self)
             self._current_task = None
 
-    # ── tool registry ─────────────────────────────────────────────
+    # -- tool registry ---------------------------------------------
 
     def _all_tools(self) -> list[ToolInfo]:
         return list(self._tools.values())
@@ -321,7 +319,7 @@ class Agent:
             for t in all_tools
         ]
 
-    # ── loop helpers ──────────────────────────────────────────────
+    # -- loop helpers ----------------------------------------------
 
     async def _emit_tool_results(
         self, results: list[tuple[ToolCall, str, float]]
@@ -337,9 +335,7 @@ class Agent:
             self._messages.append(tool_msg)
             yield tool_msg
 
-    async def _stream_llm_response(
-        self, usage: Usage | None
-    ) -> AsyncIterator[Message]:
+    async def _stream_llm_response(self, usage: Usage | None) -> AsyncIterator[Message]:
         self._llm_last_chunk = None
         injected = await _safe_hook(self.hooks, "on_before_llm", self)
         if injected is not None:

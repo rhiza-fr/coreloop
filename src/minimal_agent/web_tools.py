@@ -3,7 +3,6 @@
 Requires the ``web`` extra: ``pip install minimal-agent[web]``
 """
 
-
 from typing import Literal
 
 from .registry import ToolInfo
@@ -25,8 +24,7 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
         from pvlwebtools import web_search as _web_search
     except ImportError as exc:
         raise ImportError(
-            "Web tools require 'pvl-webtools'. "
-            "Install with: pip install minimal-agent[web]"
+            "Web tools require 'pvl-webtools'. Install with: pip install minimal-agent[web]"
         ) from exc
 
     async def web_search(
@@ -61,7 +59,7 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
         except Exception as exc:
             msg = str(exc)
             if "SearXNG URL not configured" in msg:
-                msg += " or set searxng_url in ~/.ma-config.toml"
+                msg += " or set searxng_url in ~/minimal-agent.toml"
             return f"Error: {msg}"
 
         if not results:

@@ -21,17 +21,23 @@ async def main(prompt: str) -> None:
         root=".",
     )
 
-    printed = 0
+    printed = 0  # cursor: how many chars of the current assistant message we've already output
     async for msg in agent.run(messages=[Message(role="user", content=prompt)]):
         if msg.role == "assistant":
             if msg.content:
-                print(msg.content[printed:], end="", flush=True)
-                printed: int = len(msg.content)
-            if not msg.partial:
+                print(
+                    msg.content[printed:], end="", flush=True
+                )  # only emit the delta since last partial
+                printed: int = len(
+                    msg.content
+                )  # type annotation on reassignment is intentional — tracks accumulated length
+            if not msg.partial:  # final message in the stream: reset cursor and emit a newline
                 print()
                 printed = 0
         elif msg.role == "tool":
-            preview: str = (msg.content or "")[:120].replace("\n", " ")
+            preview: str = (msg.content or "")[:120].replace(
+                "\n", " "
+            )  # compact one-line tool result for display
             print(f"[{msg.name}] {preview}", flush=True)
 
 

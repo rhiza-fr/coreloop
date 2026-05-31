@@ -16,7 +16,8 @@ from minimal_agent._logging import setup_logging
 
 
 class LoggingHook(AgentHooks):
-    """ Logs at all lifecycle events"""
+    """Logs at all lifecycle events"""
+
     def __init__(self) -> None:
         self._log = logging.getLogger("minimal_agent.hooks")
 
@@ -34,7 +35,7 @@ class LoggingHook(AgentHooks):
 
     async def on_before_llm(self, agent: Agent) -> Message | None:
         self._log.debug("on_before_llm: sending %d messages", len(agent.messages))
-        return None
+        return None  # None = proceed with the LLM call as normal
 
     async def on_after_llm(self, agent: Agent, message: Message) -> Message | None:
         tool_names = [tc.function.name for tc in (message.tool_calls or [])]
@@ -43,15 +44,17 @@ class LoggingHook(AgentHooks):
         else:
             preview = (message.content or "")[:80].replace("\n", " ")
             self._log.debug("on_after_llm: content=%r usage=%s", preview, message.usage)
-        return None
+        return None  # None = keep the LLM response unchanged
 
     async def on_before_tool(self, agent: Agent, name: str, args: dict[str, Any]) -> str | None:
         self._log.debug("on_before_tool: %s(%s)", name, args)
-        return None
+        return None  # None = execute the tool normally
 
-    async def on_after_tool(self, agent: Agent, name: str, args: dict[str, Any], result: str) -> str | None:
+    async def on_after_tool(
+        self, agent: Agent, name: str, args: dict[str, Any], result: str
+    ) -> str | None:
         self._log.debug("on_after_tool: %s -> %s", name, result[:120].replace("\n", " "))
-        return None
+        return None  # None = keep the tool result unchanged
 
 
 class TimingHook(AgentHooks):
@@ -66,7 +69,8 @@ class TimingHook(AgentHooks):
 
 
 class UsageHook(AgentHooks):
-    """ Keeps track of LLM Call usage"""
+    """Keeps track of LLM Call usage"""
+
     def __init__(self) -> None:
         self._usage = Usage()
         self._calls = 0
@@ -77,7 +81,7 @@ class UsageHook(AgentHooks):
             self._usage.prompt_tokens += message.usage.prompt_tokens
             self._usage.completion_tokens += message.usage.completion_tokens
             self._usage.total_tokens += message.usage.total_tokens
-        return None
+        return None  # None = don't modify the LLM response — we're just observing usage
 
     async def on_after_agent(self, agent: Agent) -> None:
         print(
@@ -118,7 +122,9 @@ class DemoHooks(LoggingHook, TimingHook, UsageHook):
 
 async def main(prompt: str) -> None:
     setup_logging(logging.DEBUG)
-    logging.getLogger("minimal_agent._execution").setLevel(logging.WARNING)
+    logging.getLogger("minimal_agent._execution").setLevel(
+        logging.WARNING
+    )  # suppress verbose internal execution logs so only hook output is visible
     agent = Agent(
         model="qwen3.5:9b",
         tools=["ls", "read", "grep"],

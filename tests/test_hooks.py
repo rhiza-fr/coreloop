@@ -9,7 +9,8 @@ from minimal_agent.types import ToolCall, FunctionCall
 from minimal_agent.registry import ToolInfo
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# -- Helpers --------------------------------------------------------------------
+
 
 def _text_msg(content: str = "hello") -> Message:
     return Message(role="assistant", content=content, model="test")
@@ -26,7 +27,10 @@ def _tool_msg(name: str, args: str = "{}") -> Message:
 def _noop_tool(name: str) -> ToolInfo:
     async def fn() -> str:
         return f"{name} result"
-    return ToolInfo(name=name, description="test", parameters={"type": "object", "properties": {}}, fn=fn)
+
+    return ToolInfo(
+        name=name, description="test", parameters={"type": "object", "properties": {}}, fn=fn
+    )
 
 
 class RecordingHook(AgentHooks):
@@ -59,7 +63,9 @@ class RecordingHook(AgentHooks):
         self.calls.append(f"before_tool:{name}")
         return None
 
-    async def on_after_tool(self, agent: Agent, name: str, args: dict[str, Any], result: str) -> None:
+    async def on_after_tool(
+        self, agent: Agent, name: str, args: dict[str, Any], result: str
+    ) -> None:
         self.calls.append(f"after_tool:{name}")
 
 
@@ -80,7 +86,8 @@ def _agent(hook: AgentHooks, tools: list[ToolInfo] | None = None) -> Agent:
     return Agent(model="test", hooks=hook, tools=tools)
 
 
-# ── Firing-order tests ─────────────────────────────────────────────────────────
+# -- Firing-order tests ---------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_text_turn_hook_order():
@@ -126,7 +133,8 @@ async def test_tool_turn_hook_order():
     ]
 
 
-# ── Injection / replacement contracts ─────────────────────────────────────────
+# -- Injection / replacement contracts -----------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_on_before_llm_injection_triggers_after_llm():
@@ -170,7 +178,9 @@ async def test_on_before_tool_injection_skips_real_tool():
         executed.append("ran")
         return "real"
 
-    tool = ToolInfo(name="t", description="", parameters={"type": "object", "properties": {}}, fn=real_tool)
+    tool = ToolInfo(
+        name="t", description="", parameters={"type": "object", "properties": {}}, fn=real_tool
+    )
 
     class InjectingToolHook(InjectingHook):
         async def on_before_tool(self, agent: Agent, name: str, args: dict[str, Any]) -> str | None:
@@ -192,6 +202,7 @@ async def test_on_before_tool_injection_skips_real_tool():
 @pytest.mark.asyncio
 async def test_on_after_agent_not_called_after_abort():
     """on_after_agent does not fire when the agent is aborted."""
+
     class AbortOnLlmHook(RecordingHook):
         async def on_before_llm(self, agent: Agent) -> Message | None:
             await super().on_before_llm(agent)

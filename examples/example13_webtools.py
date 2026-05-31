@@ -29,8 +29,10 @@ from minimal_agent import Agent, Message, make_web_tools
 async def main() -> None:
     # make_web_tools() reads SEARXNG_URL from the environment if not passed.
     # Omit searxng_url entirely if the env var is set.
-    searxng_url = os.environ.get("SEARXNG_URL", "http://search.lan")
-    tools = make_web_tools(searxng_url=searxng_url)
+    searxng_url = os.environ.get(
+        "SEARXNG_URL", "http://search.lan"
+    )  # Common LAN hostname for SearXNG
+    tools = make_web_tools(searxng_url=searxng_url)  # Returns ToolInfo objects, not strings
 
     agent = Agent(
         model="qwen3.5:9b",
@@ -48,9 +50,10 @@ async def main() -> None:
     for prompt in prompts:
         print(f"Q: {prompt}")
         async for msg in agent.run([Message(role="user", content=prompt)]):
+            # Skip streaming partials — only print complete assistant replies
             if not msg.partial and msg.role == "assistant" and msg.content:
                 print(f"A: {msg.content}")
-        agent.reset()
+        agent.reset()  # Clear conversation history so each query is independent
         print()
 
 

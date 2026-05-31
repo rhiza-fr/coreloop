@@ -4,6 +4,7 @@ from pathlib import Path
 from ..registry import ToolInfo
 from ._shared import _resolve_safe, _resolve_safe_strict, _fmt_size, _make_tool_info
 
+
 def make_ls_tool(root: str, *, max_entries: int = 500) -> ToolInfo:
     root_path = Path(root).resolve()
 

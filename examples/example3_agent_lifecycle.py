@@ -34,24 +34,30 @@ async def main() -> None:
     agent = Agent(
         model="qwen3.5:9b",
         tools=["ls"],
-        root=".",
-        hooks=MaxTurnsHook(2),
+        root=".",  # Required: scopes filesystem tools to this directory
+        hooks=MaxTurnsHook(2),  # hooks= is a single hook instance, not a list
     )
-    async for msg in agent.run([Message(role="user", content="List every file, then summarise the project.")]):
+    async for msg in agent.run(
+        [Message(role="user", content="List every file, then summarise the project.")]
+    ):
         if not msg.partial and msg.role == "assistant" and msg.content:
             print(msg.content)
 
     # --- Combining hooks: MaxTurnsHook + TurnPrinter ---
     print("\n=== MaxTurnsHook(3) + TurnPrinter ===")
 
+    # Use multiple inheritance to compose hook behaviors — MRO resolves
+    # TurnPrinter first (print on turn), then MaxTurnsHook (cap turns)
     class BoundedWithLogging(TurnPrinter, MaxTurnsHook):
         def __init__(self) -> None:
-            MaxTurnsHook.__init__(self, 3)
+            MaxTurnsHook.__init__(self, 3)  # Must explicitly init second base
 
         async def on_after_turn(self, agent: Agent) -> None:
+            # Chain to MaxTurnsHook so it can check/trigger the turn limit
             await MaxTurnsHook.on_after_turn(self, agent)
 
         async def on_before_agent(self, agent: Agent) -> None:
+            # Chain to MaxTurnsHook so the counter resets per run
             await MaxTurnsHook.on_before_agent(self, agent)
 
     agent = Agent(
@@ -71,6 +77,7 @@ async def main() -> None:
         if not msg.partial and msg.role == "assistant" and msg.content:
             print(f"run 1: {msg.content}")
 
+    # agent.reset() clears the message history but preserves model, tools, hooks
     agent.reset()  # clears history; next run starts clean
 
     async for msg in agent.run([Message(role="user", content="What did I ask you just before?")]):

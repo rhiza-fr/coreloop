@@ -24,8 +24,10 @@ async def main(prompt: str) -> None:
     )
 
     async for msg in agent.run([Message(role="user", content=prompt)]):
-        if not msg.partial:
-            pprint(msg.model_dump(exclude_none=True))
+        if not msg.partial:  # skip streaming partials — only show completed messages
+            pprint(
+                msg.model_dump(exclude_none=True)
+            )  # exclude None values so the dump is compact and readable
             print()
 
 

@@ -14,7 +14,7 @@ from minimal_agent.profiles import (
     resolve_profile,
 )
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+# -- helpers -------------------------------------------------------------------
 
 _SAMPLE_CONFIG = {
     "profiles": {
@@ -44,7 +44,8 @@ def _patch(cfg=_SAMPLE_CONFIG):
     return patch("minimal_agent.profiles._load_config", return_value=cfg)
 
 
-# ── _deep_merge ───────────────────────────────────────────────────────────────
+# -- _deep_merge ---------------------------------------------------------------
+
 
 def test_deep_merge_simple_override():
     assert _deep_merge({"a": 1, "b": 2}, {"b": 99, "c": 3}) == {"a": 1, "b": 99, "c": 3}
@@ -71,7 +72,8 @@ def test_deep_merge_does_not_mutate():
     assert base == {"a": {"x": 1}}
 
 
-# ── _interpolate ──────────────────────────────────────────────────────────────
+# -- _interpolate --------------------------------------------------------------
+
 
 def test_interpolate_resolves_env_var(monkeypatch):
     monkeypatch.setenv("MY_KEY", "secret")
@@ -95,7 +97,8 @@ def test_interpolate_missing_var_raises(monkeypatch):
         _interpolate("{{MISSING_VAR}}")
 
 
-# ── _load_merged_profile ──────────────────────────────────────────────────────
+# -- _load_merged_profile ------------------------------------------------------
+
 
 def test_load_merged_default():
     with _patch():
@@ -137,7 +140,8 @@ def test_load_merged_config_subtree_not_leaked_to_agent_fields():
     assert result["config"]["ui"]["example_cli"]["max_turns"] == 50
 
 
-# ── get_config ────────────────────────────────────────────────────────────────
+# -- get_config ----------------------------------------------------------------
+
 
 def test_get_config_from_raw():
     with _patch():
@@ -168,7 +172,8 @@ def test_get_config_path_too_deep_returns_default():
     assert get_config("tool.read.max_lines.too.deep", raw, default=0) == 0
 
 
-# ── resolve_profile ───────────────────────────────────────────────────────────
+# -- resolve_profile -----------------------------------------------------------
+
 
 def test_resolve_profile_returns_agent_config():
     with _patch():
@@ -212,7 +217,8 @@ def test_resolve_profile_interpolates_api_key(monkeypatch):
     assert cfg.api_key == "sk-test"
 
 
-# ── config_path / file loading ────────────────────────────────────────────────
+# -- config_path / file loading ------------------------------------------------
+
 
 def test_resolve_profile_custom_config_path(tmp_path):
     (tmp_path / "test.toml").write_text(
@@ -227,10 +233,12 @@ def test_resolve_profile_missing_file_raises(tmp_path):
         resolve_profile("default", config_path=tmp_path / "nonexistent.toml")
 
 
-# ── Agent.from_profile ────────────────────────────────────────────────────────
+# -- Agent.from_profile --------------------------------------------------------
+
 
 def test_agent_from_profile(tmp_path):
     from minimal_agent import Agent
+
     (tmp_path / "test.toml").write_text(
         '[profiles.default]\nmodel = "my-model"\nbase_url = "http://localhost/v1"\n'
     )
@@ -240,6 +248,7 @@ def test_agent_from_profile(tmp_path):
 
 def test_agent_from_profile_default_name(tmp_path):
     from minimal_agent import Agent
+
     (tmp_path / "test.toml").write_text(
         '[profiles.default]\nmodel = "default-model"\nbase_url = "http://localhost/v1"\n'
     )
@@ -249,9 +258,10 @@ def test_agent_from_profile_default_name(tmp_path):
 
 def test_agent_from_profile_named(tmp_path):
     from minimal_agent import Agent
+
     (tmp_path / "test.toml").write_text(
-        "[profiles.default]\nmodel = \"base\"\nbase_url = \"http://localhost/v1\"\n"
-        "[profiles.fast]\nmodel = \"fast-model\"\n"
+        '[profiles.default]\nmodel = "base"\nbase_url = "http://localhost/v1"\n'
+        '[profiles.fast]\nmodel = "fast-model"\n'
     )
     agent = Agent.from_profile("fast", config_path=tmp_path / "test.toml")
     assert agent.model == "fast-model"

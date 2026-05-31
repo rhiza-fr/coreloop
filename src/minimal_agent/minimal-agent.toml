@@ -96,6 +96,6 @@ max_timeout     = 300
 # [config.tool.web_search]
 # url = "http://localhost:8888"
 
-[config.ui.example_cli]
-max_turns            = 50
+[config.ui.ma]
+max_turns            = 20
 tool_result_preview  = 300

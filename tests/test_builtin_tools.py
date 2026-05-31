@@ -10,7 +10,8 @@ from minimal_agent.tools import make_tools
 from minimal_agent.tools._shared import _resolve_safe
 
 
-# ── Fixtures ──────────────────────────────────────────────────
+# -- Fixtures --------------------------------------------------
+
 
 @pytest.fixture
 def sandbox():
@@ -46,7 +47,10 @@ async def test_read_with_offset_and_limit(sandbox):
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
     result = await read.fn("hello.txt", offset=2, limit=2)
-    assert result == "line2\nline3\n\n[Truncated: showing lines 2-3. Call again with offset=4 to continue.]"
+    assert (
+        result
+        == "line2\nline3\n\n[Truncated: showing lines 2-3. Call again with offset=4 to continue.]"
+    )
 
 
 @pytest.mark.asyncio
@@ -113,12 +117,12 @@ async def test_edit_multiple_with_line_hint(sandbox):
 
     tools = {t.name: t for t in make_tools(sandbox)}
     edit = tools["edit"]
-    # Without line_hint → error
+    # Without line_hint -> error
     result = await edit.fn("multi.txt", old_text="foo", new_text="bar")
     assert "appears 3 times" in result
     assert "line_hint" in result
 
-    # With line_hint → single replace on that line
+    # With line_hint -> single replace on that line
     result2 = await edit.fn("multi.txt", old_text="foo", new_text="bar", line_hint=2)
     assert "Replaced 1" in result2
 
@@ -135,7 +139,8 @@ async def test_edit_not_found(sandbox):
     assert "not found" in result
 
 
-# ── Path traversal protection ─────────────────────────────────
+# -- Path traversal protection ---------------------------------
+
 
 @pytest.mark.asyncio
 async def test_path_traversal_rejected(sandbox):
@@ -156,7 +161,8 @@ async def test_absolute_path_within_root(sandbox):
     assert result.startswith("line1")
 
 
-# ── _resolve_safe unit tests ──────────────────────────────────
+# -- _resolve_safe unit tests ----------------------------------
+
 
 def test_resolve_safe_within_root(sandbox):
     result = _resolve_safe("hello.txt", sandbox)
