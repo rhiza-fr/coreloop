@@ -121,7 +121,7 @@ async def test_stream_chat_text():
         base_url="http://test",
         api_key=None,
         model="m",
-        messages=[{"role": "user", "content": "hi"}],
+        messages=[Message(role="user", content="hi")],
         client=client,
     ):
         collected.append(msg)
@@ -144,7 +144,7 @@ async def test_stream_chat_tool_calls():
         base_url="http://test",
         api_key=None,
         model="m",
-        messages=[{"role": "user", "content": "read file"}],
+        messages=[Message(role="user", content="read file")],
         client=client,
     ):
         collected.append(msg)

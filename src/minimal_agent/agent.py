@@ -10,11 +10,11 @@ if TYPE_CHECKING:
     from .config import AgentConfig
 
 from ._cache import make_cache
-from ._api_client import stream_chat
+from ._api_client import OPENAI_BACKEND, Backend, stream_chat
 from ._tool_execution import exec_tool
 from .hooks import AgentHooks, _safe_hook
 from .tool_registry import ToolInfo, get_tool
-from .types import Message, ToolCall, Usage, _dump_messages
+from .types import Message, ToolCall, Usage
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +118,7 @@ class Agent:
         hooks: AgentHooks | None = None,
         llm_extra_body: dict[str, Any] | None = None,
         cache_dir: Path | str | None = _DEFAULT_CACHE_DIR,
+        backend: Backend | None = None,
     ) -> None:
         # Public -- safe to read/write between runs
         self.model = model
@@ -128,6 +129,7 @@ class Agent:
         self.llm_timeout = llm_timeout
         self.hooks = hooks if hooks is not None else AgentHooks()
         self.llm_extra_body = llm_extra_body
+        self.backend = backend if backend is not None else OPENAI_BACKEND
         self._cache = make_cache(cache_dir) if cache_dir is not None else None
 
         self._base_url = base_url.rstrip("/")
@@ -153,6 +155,7 @@ class Agent:
         config_path: "str | Path | None" = None,
         hooks: AgentHooks | None = None,
         tools: "Sequence[str | ToolInfo] | None" = None,
+        backend: Backend | None = None,
     ) -> "Agent":
         """Create an Agent from a named profile in minimal-agent.toml.
 
@@ -162,7 +165,10 @@ class Agent:
         from .profiles import resolve_profile
 
         return cls.from_config(
-            resolve_profile(name, config_path=config_path), hooks=hooks, tools=tools
+            resolve_profile(name, config_path=config_path),
+            hooks=hooks,
+            tools=tools,
+            backend=backend,
         )
 
     @classmethod
@@ -172,19 +178,22 @@ class Agent:
         *,
         hooks: AgentHooks | None = None,
         tools: "Sequence[str | ToolInfo] | None" = None,
+        backend: Backend | None = None,
     ) -> "Agent":
         """Create an Agent from an AgentConfig.
 
         Equivalent to ``Agent(**dataclasses.asdict(cfg), hooks=hooks)``.
         Pass ``tools`` to override with pre-built ``ToolInfo`` objects (e.g.
         root-scoped instances that cannot be expressed as plain names in config).
+        ``backend`` and ``hooks`` are stateful runtime objects, kept out of
+        ``AgentConfig`` and passed here instead.
         """
         import dataclasses
 
         kwargs = dataclasses.asdict(cfg)
         if tools is not None:
             kwargs["tools"] = tools
-        return cls(**kwargs, hooks=hooks)
+        return cls(**kwargs, hooks=hooks, backend=backend)
 
     # -- public API ------------------------------------------------
 
@@ -303,22 +312,6 @@ class Agent:
     def _resolve_tool(self, name: str) -> ToolInfo | None:
         return self._tools.get(name)
 
-    def _tool_schemas(self) -> list[dict[str, Any]] | None:
-        all_tools = self._all_tools()
-        if not all_tools:
-            return None
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": t.name,
-                    "description": t.description,
-                    "parameters": t.parameters,
-                },
-            }
-            for t in all_tools
-        ]
-
     # -- loop helpers ----------------------------------------------
 
     async def _emit_tool_results(
@@ -351,12 +344,13 @@ class Agent:
                     base_url=self._base_url,
                     api_key=self._api_key,
                     model=self.model,
-                    messages=_dump_messages(self._messages),
-                    tools=self._tool_schemas(),
+                    messages=self._messages,
+                    tools=self._all_tools() or None,
                     timeout=self.http_request_timeout,
                     llm_extra_body=self.llm_extra_body,
                     usage=usage,
                     cache=self._cache,
+                    backend=self.backend,
                 ):
                     if self._stop_event.is_set():
                         return
