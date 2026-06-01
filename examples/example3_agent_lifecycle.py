@@ -1,11 +1,11 @@
-"""Example showing agent lifecycle control — MaxTurnsHook, stop(), and abort().
+"""Example showing agent lifecycle control -- MaxTurnsHook, stop(), and abort().
 
 The agent loop has no built-in turn limit; you control it via:
 
-  MaxTurnsHook(n)  — stop cleanly after n turns (one LLM call + its tools)
-  agent.stop()     — request a clean exit after the current turn finishes
-  agent.abort()    — cancel immediately (on_after_agent hook is NOT called)
-  agent.reset()    — clear history so the next run starts fresh
+  MaxTurnsHook(n)  -- stop cleanly after n turns (one LLM call + its tools)
+  agent.stop()     -- request a clean exit after the current turn finishes
+  agent.abort()    -- cancel immediately (on_after_agent hook is NOT called)
+  agent.reset()    -- clear history so the next run starts fresh
 
 MaxTurnsHook resets its counter at on_before_agent, so reusing one instance
 across multiple run() calls gives each run its own fresh budget.
@@ -22,10 +22,10 @@ from minimal_agent import Agent, AgentHooks, MaxTurnsHook, Message
 
 class TurnPrinter(AgentHooks):
     async def on_before_turn(self, agent: Agent) -> None:
-        print(f"  [turn {len(agent.messages)}] LLM call starting…")
+        print(f"  [turn {len(agent.messages)}] LLM call starting...")
 
     async def on_after_agent(self, agent: Agent) -> None:
-        print(f"  agent finished — {len(agent.messages)} messages in history")
+        print(f"  agent finished -- {len(agent.messages)} messages in history")
 
 
 async def main() -> None:
@@ -46,7 +46,7 @@ async def main() -> None:
     # --- Combining hooks: MaxTurnsHook + TurnPrinter ---
     print("\n=== MaxTurnsHook(3) + TurnPrinter ===")
 
-    # Use multiple inheritance to compose hook behaviors — MRO resolves
+    # Use multiple inheritance to compose hook behaviors -- MRO resolves
     # TurnPrinter first (print on turn), then MaxTurnsHook (cap turns)
     class BoundedWithLogging(TurnPrinter, MaxTurnsHook):
         def __init__(self) -> None:

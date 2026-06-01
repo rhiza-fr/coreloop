@@ -1,4 +1,4 @@
-"""Example showing subagents — tools that themselves run an Agent.
+"""Example showing subagents -- tools that themselves run an Agent.
 
 A subagent is just an async tool that instantiates an Agent, drains run(),
 and returns the final reply as a string. The parent sees it as an ordinary
@@ -9,7 +9,7 @@ LLM turn concurrently (asyncio.gather). If the LLM calls `delegate` twice
 in one response, both subagents run at the same time.
 
 You can also dispatch subagents explicitly by gathering them inside a single
-tool call — useful when you want to guarantee parallel execution regardless
+tool call -- useful when you want to guarantee parallel execution regardless
 of how the LLM structures its calls.
 
 Two things to watch:
@@ -43,7 +43,7 @@ async def delegate(task: str) -> str:
     sub = _make_subagent()
     result = ""
     async for msg in sub.run([Message(role="user", content=task)]):
-        # Skip streaming partials — we only want the final complete response
+        # Skip streaming partials -- we only want the final complete response
         if not msg.partial and msg.role == "assistant" and msg.content:
             result = msg.content
     return result or "(no response)"  # Fallback if subagent produces zero non-partial messages
@@ -68,7 +68,7 @@ async def delegate_parallel(tasks: list[str]) -> str:
                 result = msg.content
         return result or "(no response)"
 
-    # All subagents run concurrently via gather — no explicit threading needed
+    # All subagents run concurrently via gather -- no explicit threading needed
     results = await asyncio.gather(*[run_one(t) for t in tasks])
     return "\n\n".join(f"[{i + 1}] {r}" for i, r in enumerate(results))
 

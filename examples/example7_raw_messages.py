@@ -1,4 +1,4 @@
-"""Example showing the raw message stream — every completed message pretty-printed.
+"""Example showing the raw message stream -- every completed message pretty-printed.
 
 Useful for understanding what the agent loop actually produces: assistant
 messages with tool_calls, tool result messages, usage, timing, etc.
@@ -24,7 +24,7 @@ async def main(prompt: str) -> None:
     )
 
     async for msg in agent.run([Message(role="user", content=prompt)]):
-        if not msg.partial:  # skip streaming partials — only show completed messages
+        if not msg.partial:  # skip streaming partials -- only show completed messages
             pprint(
                 msg.model_dump(exclude_none=True)
             )  # exclude None values so the dump is compact and readable

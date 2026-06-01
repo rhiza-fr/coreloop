@@ -1,10 +1,10 @@
-"""Example showing the bash tool — run shell commands from inside the agent.
+"""Example showing the bash tool -- run shell commands from inside the agent.
 
 Pass "bash" as a tool name just like "read" or "ls". It is scoped to the
 agent's root directory and inherits default safety settings.
 
 Safety features built in:
-  - Dangerous command patterns are blocked (rm -rf /, dd if=, mkfs, …).
+  - Dangerous command patterns are blocked (rm -rf /, dd if=, mkfs, ...).
   - All commands run with root as the working directory by default; the
     workdir parameter is validated to stay inside root.
   - Output is middle-truncated at 10 000 chars.
@@ -48,7 +48,7 @@ async def main() -> None:
                     # Tool call arguments arrive as a JSON string, parse for display
                     args = json.loads(tc.function.arguments or "{}")
                     args_str = ", ".join(f"{k}={v!r}" for k, v in args.items())
-                    print(f"  → {tc.function.name}({args_str})")
+                    print(f"  -> {tc.function.name}({args_str})")
             if not msg.partial and msg.role == "assistant" and msg.content:
                 print(f"A: {msg.content}")
         agent.reset()  # Clear conversation history so each query is independent
@@ -58,7 +58,7 @@ async def main() -> None:
     print("=== extended blocked patterns ===")
     bash = make_bash_tool(
         root=".",
-        # \b ensures word boundaries — avoids blocking e.g. "curly" or "wgetty"
+        # \b ensures word boundaries -- avoids blocking e.g. "curly" or "wgetty"
         dangerous_patterns=DEFAULT_DANGEROUS_PATTERNS + [r"\bcurl\b", r"\bwget\b"],
     )
     agent2 = Agent(model="qwen3.5:9b", tools=[bash], root=".")

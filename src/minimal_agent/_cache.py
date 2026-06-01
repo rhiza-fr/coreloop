@@ -13,16 +13,7 @@ def make_cache(path: str | Path) -> diskcache.Cache:
     return diskcache.Cache(str(path))
 
 
-def request_key(
-    model: str,
-    messages: list[dict[str, Any]],
-    tools: list[dict[str, Any]] | None,
-    llm_extra_body: dict[str, Any] | None,
-) -> str:
-    """Return a hex SHA-256 key for the given request parameters."""
-    payload: dict[str, Any] = {"model": model, "messages": messages}
-    if tools:
-        payload["tools"] = tools
-    if llm_extra_body:
-        payload["llm_extra_body"] = llm_extra_body
+def request_key(base_url: str, body: dict[str, Any]) -> str:
+    """Return a hex SHA-256 key for the full request (endpoint + body)."""
+    payload = {"base_url": base_url, "body": body}
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()

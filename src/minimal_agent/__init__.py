@@ -3,6 +3,8 @@
 from .agent import Agent
 from .config import AgentConfig
 from .tools import make_tools
+from .tools.bash import make_bash_tool
+from .tools.grep import make_grep_tool
 from .hooks import AgentHooks, MaxTurnsHook
 from .tool_registry import ToolInfo, clear_registry, get_tool, list_tools, tool
 from .web_tools import make_web_tools
@@ -21,6 +23,8 @@ __all__ = [
     "clear_registry",
     "get_tool",
     "list_tools",
+    "make_bash_tool",
+    "make_grep_tool",
     "make_tools",
     "make_web_tools",
     "tool",

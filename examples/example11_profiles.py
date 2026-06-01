@@ -1,4 +1,4 @@
-"""Example showing profiles — named configurations from minimal-agent.toml.
+"""Example showing profiles -- named configurations from minimal-agent.toml.
 
 Profiles let you define agent configurations in minimal-agent.toml and load them
 by name at runtime. Every profile inherits from [profiles.default]; named
@@ -18,8 +18,8 @@ Example minimal-agent.toml:
 
 Two ways to load a profile:
 
-  1. Agent.from_profile("openai")          — convenience classmethod
-  2. resolve_profile("openai")             — returns AgentConfig for inspection
+  1. Agent.from_profile("openai")          -- convenience classmethod
+  2. resolve_profile("openai")             -- returns AgentConfig for inspection
      Agent.from_config(cfg)
 
 run this with
@@ -35,7 +35,7 @@ from minimal_agent.profiles import resolve_profile
 
 async def run(agent: Agent, prompt: str) -> None:
     async for msg in agent.run([Message(role="user", content=prompt)]):
-        # Skip streaming partials — only print complete assistant replies
+        # Skip streaming partials -- only print complete assistant replies
         if not msg.partial and msg.role == "assistant" and msg.content:
             print(msg.content)
 
@@ -65,4 +65,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        pass  # Suppress traceback on Ctrl+C — asyncio.run re-raises differently
+        pass  # Suppress traceback on Ctrl+C -- asyncio.run re-raises differently

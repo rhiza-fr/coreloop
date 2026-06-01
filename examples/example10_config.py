@@ -1,4 +1,4 @@
-"""Example showing AgentConfig — portable, serialisable agent configuration.
+"""Example showing AgentConfig -- portable, serialisable agent configuration.
 
 AgentConfig is a plain dataclass that bundles all Agent constructor parameters
 except hooks (which are stateful runtime objects). Use it to:
@@ -18,7 +18,7 @@ from dataclasses import replace
 from minimal_agent import Agent, AgentConfig, Message
 
 
-# Base config — everything else derives from this.
+# Base config -- everything else derives from this.
 base_config = AgentConfig(
     model="qwen3.5:9b",
     system="Answer in one short sentence.",

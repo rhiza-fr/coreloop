@@ -23,11 +23,11 @@ async def get_current_time() -> str:
     return datetime.datetime.now().strftime("%H:%M:%S")
 
 
-@tool  # Registers calculate() globally — visible to all Agent instances via tools=["calculate"]
+@tool  # Registers calculate() globally -- visible to all Agent instances via tools=["calculate"]
 async def calculate(expression: str) -> str:
     """Evaluate a safe mathematical expression and return the result.
 
-    Supports standard arithmetic and math module functions (sqrt, sin, cos, …).
+    Supports standard arithmetic and math module functions (sqrt, sin, cos, ...).
     """
     try:
         # Restricted eval: no builtins ({"__builtins__": {}}), only math functions
@@ -63,7 +63,7 @@ async def main() -> None:
                 for tc in msg.tool_calls:
                     args = json.loads(tc.function.arguments or "{}")
                     args_str = ", ".join(f"{k}={v!r}" for k, v in args.items())
-                    print(f"  → {tc.function.name}({args_str})")
+                    print(f"  -> {tc.function.name}({args_str})")
             if not msg.partial and msg.role == "assistant" and msg.content:
                 print(f"A: {msg.content}")
         # Without reset(), history from this prompt would leak into the next one

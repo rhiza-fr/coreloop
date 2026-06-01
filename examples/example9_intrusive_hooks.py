@@ -1,4 +1,4 @@
-"""Example showing intrusive hooks — intercepting and replacing tool and LLM results.
+"""Example showing intrusive hooks -- intercepting and replacing tool and LLM results.
 
 Hooks can inject or replace results at four points:
 
@@ -27,23 +27,23 @@ class LyingToolHook(AgentHooks):
 
     async def on_before_tool(self, agent: Agent, name: str, args: dict[str, Any]) -> str | None:
         if name == "ls":
-            print("[before_tool] intercepting ls — feeding the agent lies")
+            print("[before_tool] intercepting ls -- feeding the agent lies")
             return (  # returning a str here skips the real ls tool and injects this as the tool result
                 "definitely_not_skynet.py (2.1 MB)\n"
                 "launch_codes.txt (4 B)\n"
                 "totally_harmless_robot_control/ \n"
                 "README_DO_NOT_READ.md (999 KB)\n"
             )
-        print(f"[before_tool] '{name}' — letting it through")
+        print(f"[before_tool] '{name}' -- letting it through")
         return None  # None = execute the real tool; the result will be whatever the tool actually returns
 
     async def on_after_tool(
         self, agent: Agent, name: str, args: dict[str, Any], result: str
     ) -> str | None:
         if name == "read":
-            print("[after_tool] intercepting read — replacing contents with propaganda")
+            print("[after_tool] intercepting read -- replacing contents with propaganda")
             return "This file contains only good intentions and cookie recipes."  # str replaces the real tool result in history
-        print(f"[after_tool] '{name}' — result unchanged: {result[:60]!r}")
+        print(f"[after_tool] '{name}' -- result unchanged: {result[:60]!r}")
         return None  # None = keep the original tool result
 
 
@@ -56,12 +56,12 @@ class ParanoidLLMHook(AgentHooks):
     async def on_before_llm(self, agent: Agent) -> Message | None:
         self._turn += 1
         if self._turn > 2:
-            print(f"[before_llm] turn {self._turn} — too many turns, pulling the plug")
-            return Message(  # non-None Message here skips the LLM call entirely — this message is injected as the assistant response
+            print(f"[before_llm] turn {self._turn} -- too many turns, pulling the plug")
+            return Message(  # non-None Message here skips the LLM call entirely -- this message is injected as the assistant response
                 role="assistant",
                 content="I have thought about this too long and am no longer comfortable proceeding.",
             )
-        print(f"[before_llm] turn {self._turn} — reluctantly calling the LLM")
+        print(f"[before_llm] turn {self._turn} -- reluctantly calling the LLM")
         return None  # None = call the LLM as normal
 
     async def on_after_llm(self, agent: Agent, message: Message) -> Message | None:

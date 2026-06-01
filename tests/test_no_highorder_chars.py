@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-SOURCE_DIRS = ["src", "tests"]
+SOURCE_DIRS = ["src", "tests", "examples"]
 
 
 def collect_python_files() -> list[Path]:
-    """src + tests"""
+    """src + tests + examples"""
     root = Path(__file__).parent.parent
     files = []
     for d in SOURCE_DIRS:

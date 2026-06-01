@@ -1,4 +1,4 @@
-"""Example showing lifecycle hooks — tool logging, timing, and usage tracking.
+"""Example showing lifecycle hooks -- tool logging, timing, and usage tracking.
 
 run this with
 
@@ -81,7 +81,7 @@ class UsageHook(AgentHooks):
             self._usage.prompt_tokens += message.usage.prompt_tokens
             self._usage.completion_tokens += message.usage.completion_tokens
             self._usage.total_tokens += message.usage.total_tokens
-        return None  # None = don't modify the LLM response — we're just observing usage
+        return None  # None = don't modify the LLM response -- we're just observing usage
 
     async def on_after_agent(self, agent: Agent) -> None:
         print(

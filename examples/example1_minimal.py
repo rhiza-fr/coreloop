@@ -1,4 +1,4 @@
-"""Minimal example — the simplest possible agent run.
+"""Minimal example -- the simplest possible agent run.
 
 run this with
 
@@ -14,12 +14,12 @@ from minimal_agent import Agent, Message
 async def main(prompt: str) -> None:
     agent = Agent(
         model="qwen3.5:9b",
-        # No base_url → defaults to http://localhost:11434/v1 (Ollama)
+        # No base_url -> defaults to http://localhost:11434/v1 (Ollama)
     )
 
     async for msg in agent.run([Message(role="user", content=prompt)]):
         if not msg.partial and msg.role == "assistant" and msg.content:
-            # Only print final messages — skip streaming partials and tool results
+            # Only print final messages -- skip streaming partials and tool results
             print(msg.content)
 
 

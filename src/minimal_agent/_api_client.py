@@ -39,15 +39,6 @@ async def stream_chat(
     The last yielded message for a turn will have either ``content`` set
     **or** ``tool_calls`` populated (or both).
     """
-    cache_key: str | None = None
-    if cache is not None:
-        cache_key = request_key(model, messages, tools, llm_extra_body)
-        cached = cache.get(cache_key)
-        if cached is not None:
-            logger.debug("Cache hit for model=%s messages=%d", model, len(messages))
-            yield Message.model_validate_json(cached)
-            return
-
     headers = {
         "Content-Type": "application/json",
         "Accept": "text/event-stream",
@@ -69,6 +60,15 @@ async def stream_chat(
             if k not in _PROTECTED:
                 body[k] = v
 
+    cache_key: str | None = None
+    if cache is not None:
+        cache_key = request_key(base_url, body)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            logger.debug("Cache hit for model=%s messages=%d", model, len(messages))
+            yield Message.model_validate_json(cached)
+            return
+
     url = f"{base_url.rstrip('/')}{_CHAT_PATH}"
 
     accumulated_content: str | None = ""
@@ -81,8 +81,7 @@ async def stream_chat(
     pending_message: Message | None = None
 
     _owned = client is None
-    _verify = base_url.startswith("https://")
-    _session = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout), verify=_verify)
+    _session = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout))
     _t0 = time.perf_counter()
     logger.info("POST %s model=%s messages=%d", url, model, len(messages))
     try:
@@ -126,10 +125,17 @@ async def stream_chat(
                 delta = choices[0].get("delta", {})
                 finish_reason = choices[0].get("finish_reason")
 
-                # --- reasoning delta (thinking tokens, accumulated silently) ---
+                # --- reasoning delta (thinking tokens, streamed as partials) ---
                 reasoning_delta = delta.get("reasoning") or delta.get("reasoning_content")
                 if reasoning_delta:
                     accumulated_reasoning = (accumulated_reasoning or "") + reasoning_delta
+                    yield Message(
+                        role="assistant",
+                        content=accumulated_content or None,
+                        reasoning=accumulated_reasoning,
+                        partial=True,
+                        model=model,
+                    )
 
                 # --- content delta ---
                 if delta.get("content"):
@@ -137,6 +143,7 @@ async def stream_chat(
                     yield Message(
                         role="assistant",
                         content=accumulated_content,
+                        reasoning=accumulated_reasoning or None,
                         partial=True,
                         model=model,
                     )

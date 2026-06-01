@@ -1,4 +1,4 @@
-"""Example showing multi-turn conversation — reusing message history across runs.
+"""Example showing multi-turn conversation -- reusing message history across runs.
 
 After agent.run() completes, agent.messages holds the full history: system
 prompt, all assistant turns, and all tool results. Pass it as the starting
@@ -29,18 +29,18 @@ async def main() -> None:
     agent = Agent(
         model="qwen3.5:9b",
         system="You are a helpful assistant. Keep answers brief.",
-        # system= is injected as the first Message(role="system", …) on every run
+        # system= is injected as the first Message(role="system", ...) on every run
     )
 
-    # Turn 1 — agent has no history yet
+    # Turn 1 -- agent has no history yet
     reply = await ask(agent, "My name is Alice. Remember that.")
     print(f"Turn 1: {reply}")
 
-    # Turn 2 — agent.messages now contains the first exchange
+    # Turn 2 -- agent.messages now contains the first exchange
     reply = await ask(agent, "What is my name?")
     print(f"Turn 2: {reply}")
 
-    # Turn 3 — full history carries forward
+    # Turn 3 -- full history carries forward
     reply = await ask(agent, "How many messages have we exchanged so far?")
     print(f"Turn 3: {reply}")
 

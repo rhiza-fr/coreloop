@@ -1,4 +1,4 @@
-"""Example showing web tools — web_search and web_fetch.
+"""Example showing web tools -- web_search and web_fetch.
 
 Web tools are optional and require the [web] extra:
 
@@ -50,7 +50,7 @@ async def main() -> None:
     for prompt in prompts:
         print(f"Q: {prompt}")
         async for msg in agent.run([Message(role="user", content=prompt)]):
-            # Skip streaming partials — only print complete assistant replies
+            # Skip streaming partials -- only print complete assistant replies
             if not msg.partial and msg.role == "assistant" and msg.content:
                 print(f"A: {msg.content}")
         agent.reset()  # Clear conversation history so each query is independent

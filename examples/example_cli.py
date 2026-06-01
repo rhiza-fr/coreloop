@@ -93,7 +93,7 @@ def _ensure_home_config() -> None:
     if dst.exists():
         return
     src = config_path()  # Package-bundled config (e.g. inside site-packages)
-    if src == dst:  # Already operating from home — nothing to copy
+    if src == dst:  # Already operating from home -- nothing to copy
         return
     dst.parent.mkdir(parents=True, exist_ok=True)
     header = (
@@ -110,7 +110,7 @@ def _build_tools(
     profile: dict | None = None,
 ) -> list[ToolInfo] | None:  # None = let Agent use its own defaults, no user override
     if not tools_opt:
-        return None  # No tools specified — Agent will use its default tool set
+        return None  # No tools specified -- Agent will use its default tool set
     # Parse comma-separated names into a set for dedup and O(1) membership checks
     names = {n.strip().lower() for n in tools_opt.split(",") if n.strip()}
     unknown = names - _ALL_TOOL_NAMES
@@ -125,7 +125,7 @@ def _build_tools(
     if names & _BUILTIN_TOOL_NAMES:
         fs_tools = make_tools(
             allowed_root=root,
-            # get_config walks profile → default profile → hardcoded fallback
+            # get_config walks profile -> default profile -> hardcoded fallback
             read_max_lines=get_config("tool.read.max_lines", profile, 100),
             read_max_bytes=get_config("tool.read.max_bytes", profile, 10 * 1024 * 1024),
             ls_max_entries=get_config("tool.ls.max_entries", profile, 500),
@@ -139,7 +139,7 @@ def _build_tools(
         url = searxng_url or os.environ.get("SEARXNG_URL")
         try:
             web_tools = make_web_tools(searxng_url=url)
-        except ImportError:  # Web extras not installed — fail gracefully
+        except ImportError:  # Web extras not installed -- fail gracefully
             typer.echo(
                 "To use web_search or web_fetch, install web extras: "
                 "pip install minimal-agent[web]",
@@ -251,7 +251,7 @@ def main(
     if system is not None:
         agent_cfg.system = system
     if max_turns is None:
-        max_turns = int(get_config("ui.example_cli.max_turns", raw, 50))  # Profile → default → 50
+        max_turns = int(get_config("ui.example_cli.max_turns", raw, 50))  # Profile -> default -> 50
     if searxng_url is None:
         searxng_url = get_config("tool.web_search.url", raw) or os.environ.get("SEARXNG_URL")
     if timeout is not None:
@@ -277,7 +277,7 @@ def main(
     try:
         agent = Agent.from_config(
             agent_cfg, hooks=MaxTurnsHook(max_turns), tools=built_tools
-        )  # built_tools may be None — Agent falls back to defaults
+        )  # built_tools may be None -- Agent falls back to defaults
     except (KeyError, ValueError) as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1)
@@ -338,7 +338,7 @@ async def _repl(
     max_turns: int,
     raw_profile: dict | None = None,
 ) -> None:
-    import dataclasses  # Lazy import — only needed for /root command
+    import dataclasses  # Lazy import -- only needed for /root command
 
     cwd_display = Path(root or os.getcwd()).resolve()  # Resolve to absolute path for display
     header = f"ma  profile={profile}  model={agent_cfg.model}"
