@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, AsyncIterator
 if TYPE_CHECKING:
     from .config import AgentConfig
 
-from ._cache import make_cache
 from ._api_client import OPENAI_BACKEND, Backend, stream_chat
+from ._cache import make_cache
 from ._tool_execution import exec_tool
 from .hooks import AgentHooks, _safe_hook
 from .tool_registry import ToolInfo, get_tool
@@ -18,7 +18,7 @@ from .types import Message, ToolCall, Usage
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_CACHE_DIR = Path.home() / ".cache" / "minimal-agent-llm-cache"
+_DEFAULT_CACHE_DIR = Path.home() / ".cache" / "coreloop-llm-cache"
 
 _FILE_TOOL_NAMES = frozenset({"read", "ls", "edit", "grep"})
 _WEB_TOOL_NAMES = frozenset({"web_search", "web_fetch"})
@@ -157,10 +157,10 @@ class Agent:
         tools: "Sequence[str | ToolInfo] | None" = None,
         backend: Backend | None = None,
     ) -> "Agent":
-        """Create an Agent from a named profile in minimal-agent.toml.
+        """Create an Agent from a named profile in coreloop.toml.
 
         config_path overrides the default config file location
-        (~/minimal-agent.toml or MINIMAL_AGENT_CONFIG env var).
+        (~/coreloop.toml or CORELOOP_CONFIG env var).
         """
         from .profiles import resolve_profile
 

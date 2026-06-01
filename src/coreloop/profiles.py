@@ -1,4 +1,4 @@
-"""Configuration loaded from minimal-agent.toml: named profiles with default merging.
+"""Configuration loaded from coreloop.toml: named profiles with default merging.
 
 Profile resolution:
   1. Load [profiles.default] as the base.
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 from dotenv import load_dotenv
 
-_CONFIG_FILENAME = "minimal-agent.toml"
+_CONFIG_FILENAME = "coreloop.toml"
 _TEMPLATE_RE = re.compile(r"\{\{(\w+)\}\}")
 
 load_dotenv()
@@ -35,7 +35,7 @@ def config_path() -> Path:
 
 
 def _find_config_path() -> Path:
-    if env := os.environ.get("MINIMAL_AGENT_CONFIG"):
+    if env := os.environ.get("CORELOOP_CONFIG"):
         return Path(env)
     home_config = Path.home() / _CONFIG_FILENAME
     if home_config.exists():
@@ -59,7 +59,7 @@ def _load_config(path: Path | None = None) -> dict[str, Any]:
     if not p.exists():
         msg = (
             f"Config file not found at {p}. "
-            f"Create ~/{_CONFIG_FILENAME} or set MINIMAL_AGENT_CONFIG."
+            f"Create ~/{_CONFIG_FILENAME} or set CORELOOP_CONFIG."
         )
         raise FileNotFoundError(msg)
     return tomllib.loads(p.read_bytes().decode("utf-8"))

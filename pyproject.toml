@@ -1,5 +1,5 @@
 [project]
-name = "minimal-agent"
+name = "coreloop"
 version = "0.1.0"
 description = "A lightweight async tool-calling agent for any OpenAI-compatible API, usable as a library or CLI"
 readme = "README.md"
@@ -11,9 +11,9 @@ authors = [
 keywords = ["llm", "agent", "tool-calling", "openai", "ollama", "cli", "async", "streaming", "hooks", "httpx", "local-models"]
 
 [project.urls]
-Homepage = "https://github.com/rhiza-fr/minimal-agent"
-Repository = "https://github.com/rhiza-fr/minimal-agent"
-Issues = "https://github.com/rhiza-fr/minimal-agent/issues"
+Homepage = "https://github.com/rhiza-fr/coreloop"
+Repository = "https://github.com/rhiza-fr/coreloop"
+Issues = "https://github.com/rhiza-fr/coreloop/issues"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -38,7 +38,7 @@ dependencies = [
 web = ["pvl-webtools[markdown]>=0.1.0"]
 
 [project.scripts]
-ma = "minimal_agent.cli:app"
+ma = "coreloop.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.11.2,<0.12.0"]

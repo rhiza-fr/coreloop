@@ -31,12 +31,12 @@ _O = "Output"
 
 def _version_callback(value: bool) -> None:
     if value:
-        typer.echo(f"minimal-agent {__version__}")
+        typer.echo(f"coreloop {__version__}")
         raise typer.Exit()
 
 
 def _ensure_home_config() -> None:
-    dst = Path.home() / "minimal-agent.toml"
+    dst = Path.home() / "coreloop.toml"
     if dst.exists():
         return
     src = config_path()
@@ -44,7 +44,7 @@ def _ensure_home_config() -> None:
         return
     dst.parent.mkdir(parents=True, exist_ok=True)
     header = (
-        f"# Originally installed by minimal-agent from {src}\n"
+        f"# Originally installed by coreloop from {src}\n"
         "# Edit this file to configure profiles and default tools.\n\n"
     )
     dst.write_text(header + src.read_text())
@@ -69,28 +69,28 @@ def main(
     ),
     # -- provider ------------------------------------------------------------------
     profile: str = typer.Option(
-        "default", "--profile", help="Named profile from ~/minimal-agent.toml", rich_help_panel=_P
+        "default", "--profile", help="Named profile from ~/coreloop.toml", rich_help_panel=_P
     ),
     model: str | None = typer.Option(
         None,
         "--model",
         "-m",
         help="Model name (overrides profile)",
-        envvar="MINIMAL_AGENT_MODEL",
+        envvar="CORELOOP_MODEL",
         rich_help_panel=_P,
     ),
     base_url: str | None = typer.Option(
         None,
         "--base-url",
         help="API base URL (overrides profile)",
-        envvar="MINIMAL_AGENT_BASE_URL",
+        envvar="CORELOOP_BASE_URL",
         rich_help_panel=_P,
     ),
     api_key: str | None = typer.Option(
         None,
         "--api-key",
         help="API key (overrides profile)",
-        envvar="MINIMAL_AGENT_API_KEY",
+        envvar="CORELOOP_API_KEY",
         rich_help_panel=_P,
     ),
     # -- tools ---------------------------------------------------------------------
@@ -158,7 +158,7 @@ def main(
 ) -> None:
     """A minimal LLM agent -- interactive REPL or one-shot with [bold]-p PROMPT[/bold].
 
-    On first run, [cyan]~/minimal-agent.toml[/cyan] is created from the bundled default.
+    On first run, [cyan]~/coreloop.toml[/cyan] is created from the bundled default.
     Edit it to set your provider credentials and default tools.
 
     [bold]Examples[/bold]

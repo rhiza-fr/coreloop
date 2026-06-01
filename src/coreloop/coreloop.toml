@@ -1,4 +1,4 @@
-# minimal-agent configuration
+# coreloop configuration
 #
 # Profiles are named agent configurations. Every profile inherits from
 # [profiles.default] — keys in a named profile override the default.
@@ -17,7 +17,7 @@
 #   http_request_timeout   = 120.0
 #   tool_timeout           = 60.0
 #   llm_timeout            = 300.0
-#   cache_dir              = "~/.cache/minimal-agent-llm-cache"
+#   cache_dir              = "~/.cache/coreloop-llm-cache"
 
 [profiles.default]
 base_url = "http://localhost:11434/v1"

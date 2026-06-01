@@ -1,4 +1,4 @@
-# minimal-agent
+# coreloop
 
 A lightweight async tool-calling agent for any OpenAI-compatible API (via `httpx`).
 The core is an async generator loop that streams `Message` objects; you observe and
@@ -22,8 +22,8 @@ and `web_fetch` (via the `[web]` extra).
 ## Install
 
 ```bash
-pip install minimal-agent
-pip install "minimal-agent[web]"   # adds web_search and web_fetch
+pip install coreloop
+pip install "coreloop[web]"   # adds web_search and web_fetch
 ```
 
 ## Library quick-start
@@ -48,7 +48,7 @@ async def main():
 asyncio.run(main())
 ```
 
-Or load settings from a named profile in `~/minimal-agent.toml`:
+Or load settings from a named profile in `~/coreloop.toml`:
 
 ```python
 agent = Agent.from_profile("openai")
@@ -57,7 +57,7 @@ agent = Agent.from_profile("openai")
 ## CLI
 
 `ma` is a REPL / one-shot runner with profile support. On first run it copies
-the bundled `minimal-agent.toml` to `~/minimal-agent.toml` — edit that file to set
+the bundled `coreloop.toml` to `~/coreloop.toml` — edit that file to set
 your default model, tools, and provider credentials.
 
 ```bash
@@ -79,10 +79,10 @@ ma --think -p "Explain this step by step" --model qwen3-14b
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--profile` | `default` | Named profile from `~/minimal-agent.toml` |
-| `-m, --model` | profile value | Model name — overrides profile (`MINIMAL_AGENT_MODEL`) |
-| `--base-url` | profile value | API base URL — overrides profile (`MINIMAL_AGENT_BASE_URL`) |
-| `--api-key` | profile value | API key — overrides profile (`MINIMAL_AGENT_API_KEY`) |
+| `--profile` | `default` | Named profile from `~/coreloop.toml` |
+| `-m, --model` | profile value | Model name — overrides profile (`CORELOOP_MODEL`) |
+| `--base-url` | profile value | API base URL — overrides profile (`CORELOOP_BASE_URL`) |
+| `--api-key` | profile value | API key — overrides profile (`CORELOOP_API_KEY`) |
 | `-s, --system` | — | System prompt |
 | `--tools` | profile value | Comma-separated: `read,ls,edit,grep,bash,web_search,web_fetch` |
 | `-r, --root` | cwd | Allowed root directory for file tools |
@@ -117,7 +117,7 @@ Agent(
     llm_timeout: float = 300.0,           # asyncio wall for the entire LLM turn
     hooks: AgentHooks | None = None,
     llm_extra_body: dict | None = None,
-    cache_dir: Path | str | None = "~/.cache/minimal-agent-llm-cache",
+    cache_dir: Path | str | None = "~/.cache/coreloop-llm-cache",
 )
 ```
 
@@ -170,7 +170,7 @@ All file tools reject path traversal and are scoped to `root`.
 > through (`curl … | bash`, `python -c "…"`, unusual flag orders). Only enable
 > `bash` for models and prompts you trust, and prefer running in a container or VM.
 
-Web tools require `pip install "minimal-agent[web]"` and a running
+Web tools require `pip install "coreloop[web]"` and a running
 [SearXNG](https://docs.searxng.org/) instance:
 
 ```bash
@@ -263,8 +263,8 @@ swallowed — they cannot crash the agent.
 
 ## Config profiles
 
-`Agent.from_profile("openai")` builds an `AgentConfig` from `~/minimal-agent.toml`
-(or `$MINIMAL_AGENT_CONFIG`). Every profile inherits from `[profiles.default]`; named
+`Agent.from_profile("openai")` builds an `AgentConfig` from `~/coreloop.toml`
+(or `$CORELOOP_CONFIG`). Every profile inherits from `[profiles.default]`; named
 profiles override individual keys.
 
 ```toml
@@ -284,7 +284,7 @@ api_key  = "{{TOGETHER_API_KEY}}"
 ```
 
 `{{VAR_NAME}}` in any string value is interpolated from the environment. Unknown keys
-are silently ignored. The shipped `src/minimal_agent/minimal-agent.toml` includes
+are silently ignored. The shipped `src/minimal_agent/coreloop.toml` includes
 pre-configured profiles for Ollama, OpenAI, Groq, DeepSeek, Together, and OpenRouter.
 
 `AgentConfig` is a dataclass mirroring the `Agent` constructor (excluding hooks). Use
@@ -309,7 +309,7 @@ to construct an agent from one.
 
 ## Caching
 
-LLM responses are disk-cached by default (`~/.cache/minimal-agent-llm-cache/`), keyed
+LLM responses are disk-cached by default (`~/.cache/coreloop-llm-cache/`), keyed
 by SHA-256 of (model, messages, tools, extra_body). This replays identical requests
 without hitting the API — useful during development. Pass `cache_dir=None` to disable.
 
