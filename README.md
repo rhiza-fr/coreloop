@@ -4,9 +4,20 @@ A lightweight async tool-calling agent for any OpenAI-compatible API (via `httpx
 The core is an async generator loop that streams `Message` objects; you observe and
 intercept it via lifecycle hooks. Usable as a library or through a minimal CLI.
 
+The minimal core imposes no forced overhead, so it pairs well with small local
+models; early exit via hooks and `stop()` makes high-throughput batch work fast and
+keeps token costs down.
+
 Built-in tools: path-scoped `read`, `ls`, `edit`, `grep`; a `bash` tool with
 best-effort guardrails (not a security sandbox — see below); optional `web_search`
 and `web_fetch` (via the `[web]` extra).
+
+- **Observability** — [hook into every stage of the loop](#hooks): before/after each turn, LLM call, and tool execution
+  — examples: [streaming](examples/example6_streaming.py) · [raw message stream](examples/example7_raw_messages.py) · [logging & timing hooks](examples/example8_hooks.py)
+- **Loop control** — [stop cleanly, abort immediately, or inject responses mid-run](#agent): `stop()`, `abort()`, `on_before_llm`
+  — examples: [lifecycle control](examples/example3_agent_lifecycle.py) · [intercept & replace results](examples/example9_intrusive_hooks.py)
+- **Extensibility** — [register custom async tools with `@tool`](#custom-tools): inferred JSON Schema, callable directly or by name
+  — examples: [custom tools](examples/example5_customtools.py) · [subagents](examples/example12_subagents.py)
 
 ## Install
 
