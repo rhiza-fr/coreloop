@@ -1,4 +1,4 @@
-"""ma: minimal LLM agent CLI."""
+"""coreloop"""
 
 import asyncio
 import json
@@ -17,7 +17,7 @@ from ._run import once, print_http_error, repl
 from ._tools import _ALL_TOOL_NAMES, build_tools
 
 app = typer.Typer(
-    name="ma",
+    name="core",
     invoke_without_command=True,
     rich_markup_mode="rich",
     no_args_is_help=False,
@@ -36,7 +36,7 @@ def _version_callback(value: bool) -> None:
 
 
 def _ensure_home_config() -> None:
-    dst = Path.home() / "coreloop.toml"
+    dst = Path.home() / ".coreloop.toml"
     if dst.exists():
         return
     src = config_path()
@@ -69,7 +69,7 @@ def main(
     ),
     # -- provider ------------------------------------------------------------------
     profile: str = typer.Option(
-        "default", "--profile", help="Named profile from ~/coreloop.toml", rich_help_panel=_P
+        "default", "--profile", help="Named profile from ~/.coreloop.toml", rich_help_panel=_P
     ),
     model: str | None = typer.Option(
         None,
@@ -158,7 +158,7 @@ def main(
 ) -> None:
     """A minimal LLM agent -- interactive REPL or one-shot with [bold]-p PROMPT[/bold].
 
-    On first run, [cyan]~/coreloop.toml[/cyan] is created from the bundled default.
+    On first run, [cyan]~/.coreloop.toml[/cyan] is created from the bundled default.
     Edit it to set your provider credentials and default tools.
 
     [bold]Examples[/bold]

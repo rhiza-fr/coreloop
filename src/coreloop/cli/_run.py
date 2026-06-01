@@ -68,7 +68,7 @@ async def repl(
 ) -> None:
     """Run the interactive REPL until the user quits."""
     cwd_display = Path(agent_cfg.root or os.getcwd()).resolve()
-    header = f"ma  profile={profile}  model={agent_cfg.model}"
+    header = f"profile={profile}  model={agent_cfg.model}"
     if tools_opt:
         header += f"  tools={tools_opt}  root={cwd_display}"
     _console.print(header, style="cyan")

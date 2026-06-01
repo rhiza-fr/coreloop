@@ -53,7 +53,7 @@ The library is a minimal, dependency-light agent loop built on top of any OpenAI
 
 **`config.py`** — `AgentConfig` dataclass: a portable, serialisable bundle of Agent constructor parameters (`model`, `base_url`, `api_key`, `system`, `tools`, `root`, timeouts, `llm_extra_body`, `cache_dir`). Use `Agent.from_config(cfg)` or `dataclasses.replace(cfg, ...)` to derive variants. Hooks are excluded — they are stateful runtime objects.
 
-**`profiles.py`** — Loads `coreloop.toml` (env var > `~/coreloop.toml` > package-local > repo root) and resolves named profiles. Config structure: `[profiles.default]` is the base; `[profiles.<name>]` merges on top; `[config]` is a global settings tree (deep-merged with per-profile `[profiles.<name>.config]`). `{{VAR_NAME}}` in any string value is resolved from the environment. Call `resolve_profile("name")` → `AgentConfig`. Call `get_config("tool.read.max_lines", raw)` to read settings from the `[config]` tree.
+**`profiles.py`** — Loads `coreloop.toml` (env var > `~/.coreloop.toml` > package-local > repo root) and resolves named profiles. Config structure: `[profiles.default]` is the base; `[profiles.<name>]` merges on top; `[config]` is a global settings tree (deep-merged with per-profile `[profiles.<name>.config]`). `{{VAR_NAME}}` in any string value is resolved from the environment. Call `resolve_profile("name")` → `AgentConfig`. Call `get_config("tool.read.max_lines", raw)` to read settings from the `[config]` tree.
 
 **`_api_client.py`** — `stream_chat()`: a raw `httpx`-based SSE streaming client that yields progressively built `Message` objects. Handles both text content and incremental tool-call assembly (stitching together streamed `tool_calls` deltas by index). Caches responses by SHA-256 request key when a cache is provided.
 
@@ -70,7 +70,7 @@ The library is a minimal, dependency-light agent loop built on top of any OpenAI
 **`_cache.py`** — Disk cache (via `diskcache`) for LLM responses, keyed by a SHA-256 of the request. `Agent` enables it by default (`cache_dir`); pass `cache_dir=None` to disable.
 
 **`cli/`** — Typer CLI (`core`), split across three modules:
-- `cli/__init__.py` — `app = Typer(...)` and the `main()` callback; reads `~/coreloop.toml` via `resolve_profile()` / `_load_merged_profile()`, applies CLI flag overrides, then dispatches to `once()` or `repl()`.
+- `cli/__init__.py` — `app = Typer(...)` and the `main()` callback; reads `~/.coreloop.toml` via `resolve_profile()` / `_load_merged_profile()`, applies CLI flag overrides, then dispatches to `once()` or `repl()`.
 - `cli/_tools.py` — `build_tools()`: constructs pre-scoped `ToolInfo` objects (file tools, bash, web) from a comma-separated name string and profile config; bash is built with `[config.tool.bash]` settings.
 - `cli/_run.py` — `once()` (one-shot `-p` mode), `repl()` (interactive loop with `/new`, `/model`, `/root` commands), and `print_http_error()` display helper.
 
@@ -87,4 +87,4 @@ When both exist, per-agent tools take name-priority over global ones.
 
 ### Provider configuration
 
-`coreloop.toml` uses `[profiles.<name>]` sections (inheriting from `[profiles.default]`) and a `[config]` tree for app/tool settings. Read by `profiles.py` with priority `$CORELOOP_CONFIG` > `~/coreloop.toml` > package-local > repo root. String values support `{{VAR_NAME}}` env var interpolation.
+`coreloop.toml` uses `[profiles.<name>]` sections (inheriting from `[profiles.default]`) and a `[config]` tree for app/tool settings. Read by `profiles.py` with priority `$CORELOOP_CONFIG` > `~/.coreloop.toml` > package-local > repo root. String values support `{{VAR_NAME}}` env var interpolation.

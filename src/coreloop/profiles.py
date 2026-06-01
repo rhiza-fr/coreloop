@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 from dotenv import load_dotenv
 
-_CONFIG_FILENAME = "coreloop.toml"
+_CONFIG_FILENAME = ".coreloop.toml"
 _TEMPLATE_RE = re.compile(r"\{\{(\w+)\}\}")
 
 load_dotenv()
