@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from ..registry import ToolInfo
+from ..tool_registry import ToolInfo
 from ._shared import _resolve_safe, _resolve_safe_strict, _fmt_size, _make_tool_info
 
 

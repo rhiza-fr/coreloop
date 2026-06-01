@@ -13,7 +13,7 @@ from ._cache import make_cache
 from ._api_client import stream_chat
 from ._tool_execution import exec_tool
 from .hooks import AgentHooks, _safe_hook
-from .registry import ToolInfo, get_tool
+from .tool_registry import ToolInfo, get_tool
 from .types import Message, ToolCall, Usage, _dump_messages
 
 logger = logging.getLogger(__name__)

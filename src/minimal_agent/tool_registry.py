@@ -1,8 +1,8 @@
 """Tool registration via the ``@tool`` decorator."""
 
 import inspect
-import typing
 import types
+import typing
 import warnings
 from dataclasses import dataclass
 from typing import Any, Callable, Coroutine, overload

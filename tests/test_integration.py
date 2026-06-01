@@ -171,7 +171,7 @@ def test_agent_construct():
 @pytest.mark.asyncio
 async def test_registered_tool_executes():
     """A globally registered @tool is looked up by name and run via run_tool."""
-    from minimal_agent.registry import get_tool
+    from minimal_agent.tool_registry import get_tool
     from minimal_agent._tool_execution import run_tool
 
     @tool(allow_override=True)

@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 
-from ..registry import ToolInfo
+from ..tool_registry import ToolInfo
 from ._shared import _resolve_safe_strict, _make_tool_info
 
 

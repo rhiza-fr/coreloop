@@ -4,7 +4,7 @@ from .agent import Agent
 from .config import AgentConfig
 from .tools import make_tools
 from .hooks import AgentHooks, MaxTurnsHook
-from .registry import ToolInfo, clear_registry, get_tool, list_tools, tool
+from .tool_registry import ToolInfo, clear_registry, get_tool, list_tools, tool
 from .web_tools import make_web_tools
 from .types import FunctionCall, Message, ToolCall, Usage
 

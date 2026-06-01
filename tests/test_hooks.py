@@ -6,7 +6,7 @@ import pytest
 
 from minimal_agent import Agent, AgentHooks, Message
 from minimal_agent.types import ToolCall, FunctionCall
-from minimal_agent.registry import ToolInfo
+from minimal_agent.tool_registry import ToolInfo
 
 
 # -- Helpers --------------------------------------------------------------------

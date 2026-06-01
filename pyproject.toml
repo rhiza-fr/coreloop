@@ -33,7 +33,7 @@ dependencies = [
 web = ["pvl-webtools[markdown]>=0.1.0"]
 
 [project.scripts]
-ma = "minimal_agent.minimal_cli:app"
+ma = "minimal_agent.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.11.2,<0.12.0"]

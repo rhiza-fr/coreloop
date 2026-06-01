@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from ..registry import ToolInfo
+from ..tool_registry import ToolInfo
 from .edit import make_edit_tool
 from .ls import make_ls_tool
 from .read import make_read_tool

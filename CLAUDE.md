@@ -69,7 +69,10 @@ The library is a minimal, dependency-light agent loop built on top of any OpenAI
 
 **`_cache.py`** — Disk cache (via `diskcache`) for LLM responses, keyed by a SHA-256 of the request. `Agent` enables it by default (`cache_dir`); pass `cache_dir=None` to disable.
 
-**`minimal_cli.py`** — Typer CLI (`ma`). Reads `~/minimal-agent.toml` (created on first run from the bundled default) via `resolve_profile()` and `_load_merged_profile()`, then applies CLI flag overrides. All `AgentConfig` fields can be overridden via flags (`--model`, `--base-url`, `--api-key`, `--tools`, `--root`, `--llm-timeout`, etc.). Bare `ma` starts an interactive REPL; `ma -p PROMPT` runs once. The REPL shows tool calls in yellow and truncated results in grey. `/root <path>` rebuilds the agent with a new file-tool root. The internal `_build_tools()` helper constructs pre-built `ToolInfo` objects (including `bash`, built with `[config.tool.bash]` settings) that are passed to `Agent.from_config()`.
+**`cli/`** — Typer CLI (`ma`), split across three modules:
+- `cli/__init__.py` — `app = Typer(...)` and the `main()` callback; reads `~/minimal-agent.toml` via `resolve_profile()` / `_load_merged_profile()`, applies CLI flag overrides, then dispatches to `once()` or `repl()`.
+- `cli/_tools.py` — `build_tools()`: constructs pre-scoped `ToolInfo` objects (file tools, bash, web) from a comma-separated name string and profile config; bash is built with `[config.tool.bash]` settings.
+- `cli/_run.py` — `once()` (one-shot `-p` mode), `repl()` (interactive loop with `/new`, `/model`, `/root` commands), and `print_http_error()` display helper.
 
 **`__init__.py`** — Public API exports: `Agent`, `AgentConfig`, `AgentHooks`, `MaxTurnsHook`, `Message`, `ToolCall`, `FunctionCall`, `Usage`, `ToolInfo`, `tool`, `get_tool`, `list_tools`, `clear_registry`, `make_tools`, `make_web_tools`.
 

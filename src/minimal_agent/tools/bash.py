@@ -18,7 +18,7 @@ import signal
 import sys
 from pathlib import Path
 
-from ..registry import ToolInfo
+from ..tool_registry import ToolInfo
 from ._shared import _make_tool_info, _resolve_safe_strict
 
 DEFAULT_DANGEROUS_PATTERNS: list[str] = [

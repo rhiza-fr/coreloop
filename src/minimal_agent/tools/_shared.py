@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from ..registry import ToolInfo, _infer_parameters
+from ..tool_registry import ToolInfo, _infer_parameters
 
 _MAX_READ_BYTES = 10 * 1024 * 1024  # 10 MB
 

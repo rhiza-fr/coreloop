@@ -2,7 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from ..registry import ToolInfo
+from ..tool_registry import ToolInfo
 from ._shared import _fmt_size, _make_tool_info, _resolve_safe, _resolve_safe_strict
 
 
