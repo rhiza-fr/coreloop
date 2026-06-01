@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from minimal_agent import Agent, AgentHooks, Message
+from minimal_agent import Agent, AgentHooks, MaxTurnsHook, Message
 from minimal_agent.types import ToolCall, FunctionCall
 from minimal_agent.tool_registry import ToolInfo
 
@@ -238,6 +238,56 @@ async def test_on_before_llm_default_returns_none():
     agent = _agent(hooks)
     result = await hooks.on_before_llm(agent)
     assert result is None
+
+
+# -- MaxTurnsHook --------------------------------------------------------------
+
+
+def test_max_turns_hook_init():
+    """MaxTurnsHook stores the turn limit and initialises the counter at zero."""
+    hook = MaxTurnsHook(5)
+    assert hook._n == 5
+    assert hook._turns == 0
+
+
+@pytest.mark.asyncio
+async def test_max_turns_hook_stops_after_n_turns():
+    """MaxTurnsHook stops the agent when the turn budget is exhausted."""
+    # Use tool-call responses so the agent would loop forever without MaxTurnsHook.
+    tool = _noop_tool("t")
+    responses = [_tool_msg("t"), _tool_msg("t"), _text_msg("final")]
+    hook = InjectingHook(responses)
+    max_turns = MaxTurnsHook(1)
+
+    class Combined(AgentHooks):
+        async def on_before_agent(self, agent: Agent) -> None:
+            """Reset both hooks."""
+            await hook.on_before_agent(agent)
+            await max_turns.on_before_agent(agent)
+
+        async def on_before_llm(self, agent: Agent) -> Message | None:
+            """Inject from InjectingHook."""
+            return await hook.on_before_llm(agent)
+
+        async def on_after_llm(self, agent: Agent, message: Message) -> Message | None:
+            """No replacement."""
+            return None
+
+        async def on_after_turn(self, agent: Agent) -> None:
+            """Let MaxTurnsHook stop after 1 turn."""
+            await max_turns.on_after_turn(agent)
+
+        async def on_after_agent(self, agent: Agent) -> None:
+            """No-op."""
+
+    msgs: list[Message] = []
+    async for m in _agent(Combined(), tools=[tool]).run([Message(role="user", content="go")]):
+        msgs.append(m)
+
+    # With max_turns=1, the agent stops after the first tool-call turn.
+    # "final" (the third response) must NOT appear.
+    texts = [m.content for m in msgs if m.content]
+    assert "final" not in texts
 
 
 @pytest.mark.asyncio

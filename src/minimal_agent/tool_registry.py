@@ -75,6 +75,14 @@ def _pytype_to_jsonschema(tp: type) -> dict[str, Any]:
         # Mixed union -- fall through to generic string
         return {"type": "string"}
 
+    if origin is typing.Literal:
+        # All Literal values must be the same JSON type for a clean enum
+        values = list(args)
+        if all(isinstance(v, str) for v in values):
+            return {"type": "string", "enum": values}
+        if all(isinstance(v, int) for v in values):
+            return {"type": "integer", "enum": values}
+        return {"enum": values}
     if origin is list:
         item_tp = args[0] if args else str
         return {"type": "array", "items": _pytype_to_jsonschema(item_tp)}

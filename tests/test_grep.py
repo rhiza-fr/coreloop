@@ -111,3 +111,62 @@ async def test_large_output_is_truncated(sandbox):
     result = await grep.fn(pattern="match")
     assert "truncated" in result
     assert len(result) < 5000
+
+
+# -- error paths ---------------------------------------------------------------
+
+
+@requires_rg
+@pytest.mark.asyncio
+async def test_after_context_is_passed_to_rg(sandbox):
+    """after_context > 0 adds --after-context flag and returns surrounding lines."""
+    grep = make_grep_tool(sandbox)
+    result = await grep.fn(pattern="hello", after_context=1)
+    assert "hello" in result
+
+
+@pytest.mark.asyncio
+async def test_rg_os_error_returns_error(sandbox):
+    """An OSError spawning rg is caught and returned as an error."""
+    from unittest.mock import patch
+
+    async def _raise(*args, **kwargs):
+        raise OSError("spawn failed")
+
+    with patch("asyncio.create_subprocess_exec", side_effect=_raise):
+        grep = make_grep_tool(sandbox)
+        result = await grep.fn(pattern="hello")
+    assert result.startswith("Error:")
+
+
+@requires_rg
+@pytest.mark.asyncio
+async def test_rg_nonzero_exit_returns_error(sandbox):
+    """A non-zero, non-1 exit code from rg is reported as an error."""
+    grep = make_grep_tool(sandbox)
+    # Pass an invalid flag so rg exits with code 2 (usage error)
+    result = await grep.fn(pattern="hello", file_type="not_a_real_type_xyz_123")
+    assert result.startswith("Error:")
+
+
+@pytest.mark.asyncio
+async def test_rg_timeout_returns_error(sandbox):
+    """A search that exceeds search_timeout returns a timeout error."""
+    from unittest.mock import MagicMock, patch as _patch
+    import asyncio as _asyncio
+
+    async def _slow_communicate():
+        await _asyncio.sleep(10)
+        return b"", b""
+
+    mock_proc = MagicMock()
+    mock_proc.communicate = _slow_communicate
+    mock_proc.kill = MagicMock()
+
+    async def _spawn(*args, **kwargs):
+        return mock_proc
+
+    with _patch("asyncio.create_subprocess_exec", side_effect=_spawn):
+        grep = make_grep_tool(sandbox, search_timeout=0.01)
+        result = await grep.fn(pattern="hello")
+    assert "timed out" in result
