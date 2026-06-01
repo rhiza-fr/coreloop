@@ -4,7 +4,8 @@ A lightweight async tool-calling agent for any OpenAI-compatible API (via `httpx
 The core is an async generator loop that streams `Message` objects; you observe and
 intercept it via lifecycle hooks. Usable as a library or through a minimal CLI.
 
-Built-in tools: sandboxed `read`, `ls`, `edit`, `grep`, `bash`; optional `web_search`
+Built-in tools: path-scoped `read`, `ls`, `edit`, `grep`; a `bash` tool with
+best-effort guardrails (not a security sandbox — see below); optional `web_search`
 and `web_fetch` (via the `[web]` extra).
 
 ## Install
@@ -148,7 +149,15 @@ All file tools reject path traversal and are scoped to `root`.
 | `ls` | List a directory |
 | `edit` | Replace an exact string in a file; fails on ambiguous matches |
 | `grep` | Regex search via `rg`; supports `type`, `after_context`, `files_with_matches` |
-| `bash` | Run shell commands via `bash -c`; blocks dangerous patterns; kills the entire process group on timeout |
+| `bash` | Run arbitrary shell commands via `bash -c`; kills the entire process group on timeout |
+
+> **`bash` is not sandboxed.** It runs whatever the model sends with your full
+> user privileges. The `workdir` is scoped to `root`, but a command can still read,
+> write, or delete anything your account can reach, and make network calls. The
+> dangerous-pattern blocklist (e.g. `rm -rf /`, `mkfs`, fork bombs) is a speed bump
+> against obvious accidents, **not** a security boundary — trivial variants slip
+> through (`curl … | bash`, `python -c "…"`, unusual flag orders). Only enable
+> `bash` for models and prompts you trust, and prefer running in a container or VM.
 
 Web tools require `pip install "minimal-agent[web]"` and a running
 [SearXNG](https://docs.searxng.org/) instance:

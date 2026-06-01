@@ -1,12 +1,19 @@
-"""bash.py -- run shell commands via bash with safety guards.
+"""bash.py -- run shell commands via bash with best-effort guardrails.
 
 Uses ``asyncio.create_subprocess_exec`` (matching ``grep.py``'s pattern)
 with ``bash -c`` for portable command execution.
 
-Safety features:
+This is NOT a sandbox. Commands run with the host user's full privileges and can
+read, write, or delete anything that account can reach, and make network calls.
+The guardrails below reduce obvious accidents; they are not a security boundary.
 
-*   Dangerous command patterns are blocked with a clear error.
-*   Working directory is validated within the allowed root.
+Guardrails:
+
+*   A small blocklist rejects a few catastrophic patterns (``rm -rf /``, ``mkfs``,
+    fork bombs, ...). Trivial variants intentionally slip through -- treat it as a
+    speed bump, not a fence.
+*   The working directory is validated to stay inside the allowed root (this does
+    NOT confine the command itself -- only its initial ``cwd``).
 *   Output is middle-truncated at a configurable char limit.
 *   Timeout kills the entire process group (Unix) or the process (Windows).
 """
@@ -22,7 +29,10 @@ from ..tool_registry import ToolInfo
 from ._shared import _make_tool_info, _resolve_safe_strict
 
 DEFAULT_DANGEROUS_PATTERNS: list[str] = [
-    r"\brm\s+-rf\s+/\b",
+    # rm -rf (any flag order/combo containing r or f) targeting the filesystem
+    # root or a top-level dir: /, /etc, /home, /tmp/ ... Deliberately does NOT
+    # match deeper paths like /tmp/build so ordinary recursive deletes still work.
+    r"\brm\s+-\w*[rf]\w*\s+/\w*/?(?:\s|$)",
     r"\bdd\s+if=",
     r">\s*/dev/sd",
     r":\(\)\s*\{",
