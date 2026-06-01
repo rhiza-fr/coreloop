@@ -9,7 +9,7 @@ import asyncio
 import json
 import sys
 
-from minimal_agent import Agent, Message
+from coreloop import Agent, Message
 
 
 async def main(prompt: str) -> None:

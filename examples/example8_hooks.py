@@ -11,15 +11,15 @@ import sys
 import time
 from typing import Any
 
-from minimal_agent import Agent, AgentHooks, Message, Usage
-from minimal_agent._logging import setup_logging
+from coreloop import Agent, AgentHooks, Message, Usage
+from coreloop._logging import setup_logging
 
 
 class LoggingHook(AgentHooks):
     """Logs at all lifecycle events"""
 
     def __init__(self) -> None:
-        self._log = logging.getLogger("minimal_agent.hooks")
+        self._log = logging.getLogger("coreloop.hooks")
 
     async def on_before_agent(self, agent: Agent) -> None:
         self._log.debug("on_before_agent: model=%s", agent.model)
@@ -122,7 +122,7 @@ class DemoHooks(LoggingHook, TimingHook, UsageHook):
 
 async def main(prompt: str) -> None:
     setup_logging(logging.DEBUG)
-    logging.getLogger("minimal_agent._execution").setLevel(
+    logging.getLogger("coreloop._execution").setLevel(
         logging.WARNING
     )  # suppress verbose internal execution logs so only hook output is visible
     agent = Agent(

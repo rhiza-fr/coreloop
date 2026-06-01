@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from minimal_agent.tools.ls import make_ls_tool
+from coreloop.tools.ls import make_ls_tool
 
 
 @pytest.fixture

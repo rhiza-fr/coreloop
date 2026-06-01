@@ -12,7 +12,7 @@ import tempfile
 
 import pytest
 
-from minimal_agent.tools.bash import make_bash_tool
+from coreloop.tools.bash import make_bash_tool
 
 _HAS_BASH = shutil.which("bash") is not None
 requires_bash = pytest.mark.skipif(not _HAS_BASH, reason="bash not on PATH")

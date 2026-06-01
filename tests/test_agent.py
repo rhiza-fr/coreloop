@@ -4,9 +4,9 @@ import tempfile
 
 import pytest
 
-from minimal_agent import Agent
-from minimal_agent.agent import _resolve_tools
-from minimal_agent.tool_registry import ToolInfo, clear_registry, tool
+from coreloop import Agent
+from coreloop.agent import _resolve_tools
+from coreloop.tool_registry import ToolInfo, clear_registry, tool
 
 
 @pytest.fixture(autouse=True)

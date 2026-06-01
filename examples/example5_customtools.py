@@ -14,7 +14,7 @@ import datetime
 import json
 import math
 
-from minimal_agent import Agent, Message, tool
+from coreloop import Agent, Message, tool
 
 
 @tool  # Function name becomes the tool name; type hints and docstring define the schema

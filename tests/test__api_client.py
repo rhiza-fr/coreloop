@@ -3,8 +3,8 @@
 import httpx
 import pytest
 
-from minimal_agent._api_client import OpenAIBackend, _tool_schemas
-from minimal_agent.tool_registry import ToolInfo
+from coreloop._api_client import OpenAIBackend, _tool_schemas
+from coreloop.tool_registry import ToolInfo
 
 
 def _make_tool(name: str, description: str = "desc") -> ToolInfo:
@@ -88,7 +88,7 @@ def test_openai_backend_headers_with_api_key():
 
 def test_openai_backend_build_body_basic():
     """build_body produces a dict with model, messages, stream, and stream_options."""
-    from minimal_agent.types import Message
+    from coreloop.types import Message
 
     backend = OpenAIBackend()
     body = backend.build_body(
@@ -105,7 +105,7 @@ def test_openai_backend_build_body_basic():
 
 def test_openai_backend_build_body_with_tools():
     """build_body includes a tools list when tools are provided."""
-    from minimal_agent.types import Message
+    from coreloop.types import Message
 
     backend = OpenAIBackend()
     body = backend.build_body(
@@ -120,7 +120,7 @@ def test_openai_backend_build_body_with_tools():
 
 def test_openai_backend_build_body_extra_keys():
     """Extra body keys are forwarded unless they are protected."""
-    from minimal_agent.types import Message
+    from coreloop.types import Message
 
     backend = OpenAIBackend()
     body = backend.build_body(

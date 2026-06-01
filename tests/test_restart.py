@@ -4,7 +4,7 @@ These tests don't need HTTP mocking -- they test the conversation
 property and the restart contract directly.
 """
 
-from minimal_agent import Agent, AgentHooks, Message
+from coreloop import Agent, AgentHooks, Message
 
 
 def test_conversation_empty_before_run():

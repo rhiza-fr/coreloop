@@ -23,7 +23,7 @@ uv run examples/example12_subagents.py
 
 import asyncio
 
-from minimal_agent import Agent, MaxTurnsHook, Message, tool
+from coreloop import Agent, MaxTurnsHook, Message, tool
 
 
 def _make_subagent() -> Agent:

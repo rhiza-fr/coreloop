@@ -2,7 +2,7 @@
 
 import pytest
 
-from minimal_agent import clear_registry
+from coreloop import clear_registry
 
 # Default base_url and model for tests that construct Agent.
 # These require a running Ollama instance with qwen3.5:9b.

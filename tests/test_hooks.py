@@ -4,9 +4,9 @@ from typing import Any
 
 import pytest
 
-from minimal_agent import Agent, AgentHooks, MaxTurnsHook, Message
-from minimal_agent.types import ToolCall, FunctionCall
-from minimal_agent.tool_registry import ToolInfo
+from coreloop import Agent, AgentHooks, MaxTurnsHook, Message
+from coreloop.types import ToolCall, FunctionCall
+from coreloop.tool_registry import ToolInfo
 
 
 # -- Helpers --------------------------------------------------------------------

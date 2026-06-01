@@ -1,4 +1,4 @@
-"""minimal-agent: a minimal LLM agent with tool-calling support."""
+"""coreloop: a minimal LLM agent with tool-calling support."""
 
 from .agent import Agent
 from .config import AgentConfig

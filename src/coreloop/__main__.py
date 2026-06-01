@@ -1,4 +1,4 @@
-"""Allow ``python -m minimal_agent`` to invoke the CLI."""
+"""Allow ``python -m coreloop`` to invoke the CLI."""
 
 from .cli import app
 

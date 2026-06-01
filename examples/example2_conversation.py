@@ -11,7 +11,7 @@ uv run examples/example2_conversation.py
 
 import asyncio
 
-from minimal_agent import Agent, Message
+from coreloop import Agent, Message
 
 
 async def ask(agent: Agent, user_input: str) -> str:

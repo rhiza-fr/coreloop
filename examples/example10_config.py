@@ -15,7 +15,7 @@ uv run examples/example10_config.py
 import asyncio
 from dataclasses import replace
 
-from minimal_agent import Agent, AgentConfig, Message
+from coreloop import Agent, AgentConfig, Message
 
 
 # Base config -- everything else derives from this.

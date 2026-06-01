@@ -13,7 +13,7 @@ uv run examples/example6_streaming.py what files are in this project?
 import asyncio
 import sys
 
-from minimal_agent import Agent, Message
+from coreloop import Agent, Message
 
 _DIM = "\033[2m"
 _RESET = "\033[0m"

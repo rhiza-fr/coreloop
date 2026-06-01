@@ -13,7 +13,7 @@ import sys
 
 from rich.pretty import pprint
 
-from minimal_agent import Agent, Message
+from coreloop import Agent, Message
 
 
 async def main(prompt: str) -> None:

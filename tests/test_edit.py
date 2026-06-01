@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from minimal_agent.tools.edit import make_edit_tool
+from coreloop.tools.edit import make_edit_tool
 
 
 @pytest.fixture

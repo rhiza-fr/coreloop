@@ -24,25 +24,25 @@ uv run ruff check src tests
 uv run ruff format src tests
 
 # Run the CLI (interactive REPL) — model is required
-uv run ma --model qwen3.5:9b
+uv run core --model qwen3.5:9b
 
 # Run the CLI with a custom base URL and API key
-uv run ma --model gpt-4o-mini --base-url https://api.openai.com/v1 --api-key $OPENAI_API_KEY
+uv run core --model gpt-4o-mini --base-url https://api.openai.com/v1 --api-key $OPENAI_API_KEY
 
 # Run the CLI (one-shot, print final result)
-uv run ma -p "your prompt here" --model qwen3.5:9b
+uv run core -p "your prompt here" --model qwen3.5:9b
 
 # Run with file tools enabled
-uv run ma --tools read,edit,ls,grep --root . --model qwen3.5:9b
+uv run core --tools read,edit,ls,grep --root . --model qwen3.5:9b
 
 # Run with bash tool enabled
-uv run ma --tools bash --root . --model qwen3.5:9b
+uv run core --tools bash --root . --model qwen3.5:9b
 
 # Run with thinking enabled (reasoning_effort=medium)
-uv run ma -p "your prompt here" --think --model qwen3.5:9b
+uv run core -p "your prompt here" --think --model qwen3.5:9b
 
 # Run with a named profile from coreloop.toml
-uv run ma --profile openai -p "your prompt here"
+uv run core --profile openai -p "your prompt here"
 ```
 
 ## Architecture
@@ -69,7 +69,7 @@ The library is a minimal, dependency-light agent loop built on top of any OpenAI
 
 **`_cache.py`** — Disk cache (via `diskcache`) for LLM responses, keyed by a SHA-256 of the request. `Agent` enables it by default (`cache_dir`); pass `cache_dir=None` to disable.
 
-**`cli/`** — Typer CLI (`ma`), split across three modules:
+**`cli/`** — Typer CLI (`core`), split across three modules:
 - `cli/__init__.py` — `app = Typer(...)` and the `main()` callback; reads `~/coreloop.toml` via `resolve_profile()` / `_load_merged_profile()`, applies CLI flag overrides, then dispatches to `once()` or `repl()`.
 - `cli/_tools.py` — `build_tools()`: constructs pre-scoped `ToolInfo` objects (file tools, bash, web) from a comma-separated name string and profile config; bash is built with `[config.tool.bash]` settings.
 - `cli/_run.py` — `once()` (one-shot `-p` mode), `repl()` (interactive loop with `/new`, `/model`, `/root` commands), and `print_http_error()` display helper.

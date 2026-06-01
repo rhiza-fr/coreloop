@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from minimal_agent._tool_execution import exec_tool, run_tool
-from minimal_agent.hooks import AgentHooks
-from minimal_agent.tool_registry import ToolInfo
-from minimal_agent.types import FunctionCall, ToolCall
+from coreloop._tool_execution import exec_tool, run_tool
+from coreloop.hooks import AgentHooks
+from coreloop.tool_registry import ToolInfo
+from coreloop.types import FunctionCall, ToolCall
 
 
 def _make_tool(name: str, fn=None, *, required: list[str] | None = None) -> ToolInfo:

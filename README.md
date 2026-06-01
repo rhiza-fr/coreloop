@@ -30,7 +30,7 @@ pip install "coreloop[web]"   # adds web_search and web_fetch
 
 ```python
 import asyncio
-from minimal_agent import Agent, Message
+from coreloop import Agent, Message
 
 agent = Agent(
     model="gpt-4o-mini",
@@ -56,25 +56,25 @@ agent = Agent.from_profile("openai")
 
 ## CLI
 
-`ma` is a REPL / one-shot runner with profile support. On first run it copies
+`core` is a REPL / one-shot runner with profile support. On first run it copies
 the bundled `coreloop.toml` to `~/coreloop.toml` — edit that file to set
 your default model, tools, and provider credentials.
 
 ```bash
 # Interactive REPL using the default profile (Ollama)
-ma
+core
 
 # One-shot with a named profile
-ma --profile openai -p "Summarise this repo"
+core --profile openai -p "Summarise this repo"
 
 # Override model and enable file tools
-ma --profile openai --model gpt-4o --tools read,ls,grep --root .
+core --profile openai --model gpt-4o --tools read,ls,grep --root .
 
 # Bypass profiles entirely
-ma --base-url https://api.openai.com/v1 --api-key $OPENAI_API_KEY --model gpt-4o-mini -p "Hello"
+core --base-url https://api.openai.com/v1 --api-key $OPENAI_API_KEY --model gpt-4o-mini -p "Hello"
 
 # Enable reasoning
-ma --think -p "Explain this step by step" --model qwen3-14b
+core --think -p "Explain this step by step" --model qwen3-14b
 ```
 
 | Flag | Default | Description |
@@ -185,7 +185,7 @@ docker run -d -p 8080:8080 searxng/searxng
 ## Custom tools
 
 ```python
-from minimal_agent import tool
+from coreloop import tool
 
 @tool
 async def read_env(name: str) -> str:
@@ -218,7 +218,7 @@ works alongside registration).
 Registry helpers:
 
 ```python
-from minimal_agent import list_tools, get_tool, clear_registry
+from coreloop import list_tools, get_tool, clear_registry
 
 list_tools()          # list[ToolInfo] — all globally registered tools
 get_tool("read_env")  # ToolInfo | None
@@ -230,7 +230,7 @@ clear_registry()      # remove all tools (useful in tests)
 Subclass `AgentHooks` to observe or intercept any stage of the loop:
 
 ```python
-from minimal_agent import AgentHooks
+from coreloop import AgentHooks
 
 class LogHook(AgentHooks):
     async def on_before_tool(self, agent, name, args):
@@ -284,7 +284,7 @@ api_key  = "{{TOGETHER_API_KEY}}"
 ```
 
 `{{VAR_NAME}}` in any string value is interpolated from the environment. Unknown keys
-are silently ignored. The shipped `src/minimal_agent/coreloop.toml` includes
+are silently ignored. The shipped `src/coreloop/coreloop.toml` includes
 pre-configured profiles for Ollama, OpenAI, Groq, DeepSeek, Together, and OpenRouter.
 
 `AgentConfig` is a dataclass mirroring the `Agent` constructor (excluding hooks). Use

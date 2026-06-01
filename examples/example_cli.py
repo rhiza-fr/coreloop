@@ -1,8 +1,8 @@
-"""Full-featured CLI for minimal-agent.
+"""Full-featured CLI for coreloop.
 
 This is a reference implementation showing how to build a richer CLI on top
-of the minimal-agent library. It adds:
-  - Config file (~/minimal-agent.toml) with named profiles
+of the coreloop library. It adds:
+  - Config file (~/coreloop.toml) with named profiles
   - Built-in file tools (read, ls, edit, grep) and web tools
   - REPL commands: /new, /model, /root
 
@@ -23,17 +23,17 @@ import httpx
 import typer
 from rich.console import Console
 
-from minimal_agent import Agent, AgentConfig, MaxTurnsHook, Message
-from minimal_agent.profiles import (
+from coreloop import Agent, AgentConfig, MaxTurnsHook, Message
+from coreloop.profiles import (
     _load_merged_profile,
     config_path,
     get_config,
     resolve_profile,
 )  # _load_merged_profile: returns raw dict for get_config lookups
-from minimal_agent._logging import setup_logging  # Internal logging setup (private module)
-from minimal_agent import ToolInfo
-from minimal_agent.tools import make_tools
-from minimal_agent.web_tools import make_web_tools
+from coreloop._logging import setup_logging  # Internal logging setup (private module)
+from coreloop import ToolInfo
+from coreloop.tools import make_tools
+from coreloop.web_tools import make_web_tools
 
 _console = Console()  # Module-level Rich console for coloured output
 _HTTP_ERROR_BODY_PREVIEW = 500  # Max chars to show from an HTTP error response body
@@ -81,15 +81,15 @@ def _print_http_error(exc: httpx.HTTPStatusError) -> None:
 
 def _version_callback(value: bool) -> None:
     if value:
-        from minimal_agent import __version__
+        from coreloop import __version__
 
-        typer.echo(f"minimal-agent {__version__}")
+        typer.echo(f"coreloop {__version__}")
         raise typer.Exit()  # Must raise typer.Exit, not sys.exit, to work inside Typer callback
 
 
 def _ensure_home_config() -> None:
-    """Copy the package's default config to ~/minimal-agent.toml if none exists yet."""
-    dst = Path.home() / "minimal-agent.toml"
+    """Copy the package's default config to ~/coreloop.toml if none exists yet."""
+    dst = Path.home() / "coreloop.toml"
     if dst.exists():
         return
     src = config_path()  # Package-bundled config (e.g. inside site-packages)
@@ -97,7 +97,7 @@ def _ensure_home_config() -> None:
         return
     dst.parent.mkdir(parents=True, exist_ok=True)
     header = (
-        f"# Originally installed by minimal-agent from {src}\n"
+        f"# Originally installed by coreloop from {src}\n"
         "# Edit this file to configure profiles and default tools.\n\n"
     )
     dst.write_text(header + src.read_text())
@@ -142,7 +142,7 @@ def _build_tools(
         except ImportError:  # Web extras not installed -- fail gracefully
             typer.echo(
                 "To use web_search or web_fetch, install web extras: "
-                "pip install minimal-agent[web]",
+                "pip install coreloop[web]",
                 err=True,
             )
             raise typer.Exit(1)
@@ -154,7 +154,7 @@ def _build_tools(
 def main(
     ctx: typer.Context,
     profile: str = typer.Option(
-        "default", "--profile", help="Named profile from minimal-agent.toml"
+        "default", "--profile", help="Named profile from coreloop.toml"
     ),
     model: str | None = typer.Option(None, "--model", "-m", help="Model name (overrides profile)"),
     prompt: str | None = typer.Option(
@@ -232,7 +232,7 @@ def main(
             raise typer.Exit(1)
         setup_logging(level_upper)
 
-    _ensure_home_config()  # Ensure ~/minimal-agent.toml exists before resolving profiles
+    _ensure_home_config()  # Ensure ~/coreloop.toml exists before resolving profiles
 
     try:
         agent_cfg = resolve_profile(profile)

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from minimal_agent.tools.grep import make_grep_tool
+from coreloop.tools.grep import make_grep_tool
 
 _HAS_RG = shutil.which("rg") is not None
 requires_rg = pytest.mark.skipif(not _HAS_RG, reason="rg (ripgrep) not on PATH")

@@ -8,7 +8,7 @@ uv run examples/example1_minimal.py what is your name?
 import asyncio
 import sys
 
-from minimal_agent import Agent, Message
+from coreloop import Agent, Message
 
 
 async def main(prompt: str) -> None:

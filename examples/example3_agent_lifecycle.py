@@ -17,7 +17,7 @@ uv run examples/example3_agent_lifecycle.py
 
 import asyncio
 
-from minimal_agent import Agent, AgentHooks, MaxTurnsHook, Message
+from coreloop import Agent, AgentHooks, MaxTurnsHook, Message
 
 
 class TurnPrinter(AgentHooks):

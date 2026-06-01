@@ -3,7 +3,7 @@
 Use with Agent.from_config(), or use dataclasses.replace() to derive variants:
 
     from dataclasses import replace
-    from minimal_agent import AgentConfig
+    from coreloop import AgentConfig
 
     base = AgentConfig(model="qwen3:8b")
     fast = replace(base, model="qwen3:0.6b", timeout=10.0)
@@ -30,4 +30,4 @@ class AgentConfig:
     tool_timeout: float = 360.0
     llm_timeout: float = 300.0
     llm_extra_body: dict[str, Any] | None = None
-    cache_dir: str | None = str(Path.home() / ".cache" / "minimal-agent-llm-cache")
+    cache_dir: str | None = str(Path.home() / ".cache" / "coreloop-llm-cache")

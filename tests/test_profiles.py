@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from minimal_agent.config import AgentConfig
-from minimal_agent.profiles import (
+from coreloop.config import AgentConfig
+from coreloop.profiles import (
     _deep_merge,
     _interpolate,
     _load_merged_profile,
@@ -41,7 +41,7 @@ _SAMPLE_CONFIG = {
 
 def _patch(cfg=_SAMPLE_CONFIG):
     """Patch _load_config to return cfg instead of reading from disk."""
-    return patch("minimal_agent.profiles._load_config", return_value=cfg)
+    return patch("coreloop.profiles._load_config", return_value=cfg)
 
 
 # -- _deep_merge ---------------------------------------------------------------
@@ -216,7 +216,7 @@ def test_resolve_profile_ignores_cli_only_keys():
         },
         "config": {},
     }
-    with patch("minimal_agent.profiles._load_config", return_value=cfg_with_extras):
+    with patch("coreloop.profiles._load_config", return_value=cfg_with_extras):
         cfg = resolve_profile("default")
     assert isinstance(cfg, AgentConfig)
     assert not hasattr(cfg, "max_turns")
@@ -235,7 +235,7 @@ def test_resolve_profile_interpolates_api_key(monkeypatch):
         },
         "config": {},
     }
-    with patch("minimal_agent.profiles._load_config", return_value=cfg_with_key):
+    with patch("coreloop.profiles._load_config", return_value=cfg_with_key):
         cfg = resolve_profile("default")
     assert cfg.api_key == "sk-test"
 
@@ -263,7 +263,7 @@ def test_resolve_profile_missing_file_raises(tmp_path):
 
 def test_agent_from_profile(tmp_path):
     """Agent.from_profile builds an Agent from a named TOML profile."""
-    from minimal_agent import Agent
+    from coreloop import Agent
 
     (tmp_path / "test.toml").write_text(
         '[profiles.default]\nmodel = "my-model"\nbase_url = "http://localhost/v1"\n'
@@ -274,7 +274,7 @@ def test_agent_from_profile(tmp_path):
 
 def test_agent_from_profile_default_name(tmp_path):
     """Agent.from_profile uses the 'default' profile when no name is given."""
-    from minimal_agent import Agent
+    from coreloop import Agent
 
     (tmp_path / "test.toml").write_text(
         '[profiles.default]\nmodel = "default-model"\nbase_url = "http://localhost/v1"\n'
@@ -285,7 +285,7 @@ def test_agent_from_profile_default_name(tmp_path):
 
 def test_agent_from_profile_named(tmp_path):
     """A named profile is loaded and inherits base_url from default."""
-    from minimal_agent import Agent
+    from coreloop import Agent
 
     (tmp_path / "test.toml").write_text(
         '[profiles.default]\nmodel = "base"\nbase_url = "http://localhost/v1"\n'

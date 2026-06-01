@@ -22,8 +22,8 @@ uv run examples/example14_bashtools.py
 import asyncio
 import json
 
-from minimal_agent import Agent, Message
-from minimal_agent.tools.bash import DEFAULT_DANGEROUS_PATTERNS, make_bash_tool
+from coreloop import Agent, Message
+from coreloop.tools.bash import DEFAULT_DANGEROUS_PATTERNS, make_bash_tool
 
 
 async def main() -> None:

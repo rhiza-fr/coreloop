@@ -15,7 +15,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from minimal_agent import Agent, Message, make_tools
+from coreloop import Agent, Message, make_tools
 
 OLLAMA_HOST = "http://192.168.0.101:11434/v1"
 MODEL = "qwen3.5:9b"

@@ -1,14 +1,14 @@
-"""Logging configuration for minimal-agent."""
+"""Logging configuration for coreloop."""
 
 import logging
 
 from rich.logging import RichHandler
 
-_LOGGER_NAME = "minimal_agent"
+_LOGGER_NAME = "coreloop"
 
 
 def setup_logging(level: str | int = logging.WARNING) -> None:
-    """Configure the minimal_agent logger with a RichHandler."""
+    """Configure the coreloop logger with a RichHandler."""
     logger = logging.getLogger(_LOGGER_NAME)
     if logger.handlers:
         return  # already configured

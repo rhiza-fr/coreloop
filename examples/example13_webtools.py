@@ -2,7 +2,7 @@
 
 Web tools are optional and require the [web] extra:
 
-    pip install minimal-agent[web]
+    pip install coreloop[web]
     or ... uv sync --all-extras (if you are in this src)
 
 They also require a running SearXNG instance for search. Set its URL via:
@@ -23,7 +23,7 @@ uv run examples/example13_webtools.py
 import asyncio
 import os
 
-from minimal_agent import Agent, Message, make_web_tools
+from coreloop import Agent, Message, make_web_tools
 
 
 async def main() -> None:

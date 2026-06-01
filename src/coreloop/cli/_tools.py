@@ -73,7 +73,7 @@ def build_tools(
         except ImportError:
             typer.echo(
                 "To use web_search or web_fetch, install web extras: "
-                "pip install minimal-agent[web]",
+                "pip install coreloop[web]",
                 err=True,
             )
             raise typer.Exit(1)

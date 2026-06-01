@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from minimal_agent.web_tools import make_web_tools
+from coreloop.web_tools import make_web_tools
 
 
 def _fake_pvlwebtools(search_return=None, fetch_return=None, search_exc=None, fetch_exc=None):
@@ -108,13 +108,13 @@ async def test_web_search_returns_error_on_exception():
 
 @pytest.mark.asyncio
 async def test_web_search_appends_config_hint_for_searxng_error():
-    """A SearXNG-not-configured error includes a hint about minimal-agent.toml."""
+    """A SearXNG-not-configured error includes a hint about coreloop.toml."""
     fake = _fake_pvlwebtools(search_exc=RuntimeError("SearXNG URL not configured"))
     with patch.dict(sys.modules, {"pvlwebtools": fake}):
         tools = make_web_tools()
     tool = next(t for t in tools if t.name == "web_search")
     result = await tool.fn(query="test")
-    assert "minimal-agent.toml" in result
+    assert "coreloop.toml" in result
 
 
 # -- web_fetch ------------------------------------------------------------------

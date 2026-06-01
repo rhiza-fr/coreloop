@@ -2,8 +2,8 @@
 
 import pytest
 
-from minimal_agent import tool
-from minimal_agent.tool_registry import ToolInfo, clear_registry, get_tool, list_tools
+from coreloop import tool
+from coreloop.tool_registry import ToolInfo, clear_registry, get_tool, list_tools
 
 
 @pytest.fixture(autouse=True)

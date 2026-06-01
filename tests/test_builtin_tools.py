@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from minimal_agent.tools import make_tools
-from minimal_agent.tools._shared import _resolve_safe
+from coreloop.tools import make_tools
+from coreloop.tools._shared import _resolve_safe
 
 
 # -- Fixtures --------------------------------------------------

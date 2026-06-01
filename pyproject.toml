@@ -9,11 +9,6 @@ authors = [
     { name = "Chris Kilner", email = "chris@rhiza.fr" }
 ]
 keywords = ["llm", "agent", "tool-calling", "openai", "ollama", "cli", "async", "streaming", "hooks", "httpx", "local-models"]
-
-[project.urls]
-Homepage = "https://github.com/rhiza-fr/coreloop"
-Repository = "https://github.com/rhiza-fr/coreloop"
-Issues = "https://github.com/rhiza-fr/coreloop/issues"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -34,11 +29,16 @@ dependencies = [
     "rich>=13.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/rhiza-fr/coreloop"
+Repository = "https://github.com/rhiza-fr/coreloop"
+Issues = "https://github.com/rhiza-fr/coreloop/issues"
+
 [project.optional-dependencies]
 web = ["pvl-webtools[markdown]>=0.1.0"]
 
 [project.scripts]
-ma = "coreloop.cli:app"
+core = "coreloop.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.11.2,<0.12.0"]

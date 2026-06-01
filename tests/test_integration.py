@@ -5,9 +5,9 @@ import json
 import httpx
 import pytest
 
-from minimal_agent import Agent, Message, tool
-from minimal_agent.types import _dump_messages
-from minimal_agent._api_client import stream_chat
+from coreloop import Agent, Message, tool
+from coreloop.types import _dump_messages
+from coreloop._api_client import stream_chat
 
 
 # -- SSE helpers ------------------------------------------------
@@ -172,8 +172,8 @@ def test_agent_construct():
 @pytest.mark.asyncio
 async def test_registered_tool_executes():
     """A globally registered @tool is looked up by name and run via run_tool."""
-    from minimal_agent.tool_registry import get_tool
-    from minimal_agent._tool_execution import run_tool
+    from coreloop.tool_registry import get_tool
+    from coreloop._tool_execution import run_tool
 
     @tool(allow_override=True)
     async def read(path: str) -> str:

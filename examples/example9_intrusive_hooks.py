@@ -19,7 +19,7 @@ import asyncio
 import sys
 from typing import Any
 
-from minimal_agent import Agent, AgentHooks, Message
+from coreloop import Agent, AgentHooks, Message
 
 
 class LyingToolHook(AgentHooks):

@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from minimal_agent.tools.bash import make_bash_tool
+from coreloop.tools.bash import make_bash_tool
 
 _HAS_BASH = shutil.which("bash") is not None
 requires_bash = pytest.mark.skipif(not _HAS_BASH, reason="bash not on PATH")
@@ -103,7 +103,7 @@ async def test_max_chars_triggers_truncation(sandbox):
 @pytest.mark.asyncio
 async def test_bash_not_found_returns_error(sandbox):
     """When no bash executable is on PATH, the tool returns a user-friendly error."""
-    with patch("minimal_agent.tools.bash._resolve_bash", return_value=None):
+    with patch("coreloop.tools.bash._resolve_bash", return_value=None):
         bash = make_bash_tool(sandbox)
         result = await bash.fn(command="echo hi")
     assert result.startswith("Error:")
@@ -139,7 +139,7 @@ async def test_subprocess_os_error_returns_error(sandbox):
 def test_preexec_setpgid_calls_setpgrp_when_available():
     """_preexec_setpgid calls os.setpgrp() when it exists on the platform."""
     from unittest.mock import MagicMock
-    from minimal_agent.tools.bash import _preexec_setpgid
+    from coreloop.tools.bash import _preexec_setpgid
 
     mock_setpgrp = MagicMock()
     with patch("os.setpgrp", mock_setpgrp, create=True):
@@ -150,7 +150,7 @@ def test_preexec_setpgid_calls_setpgrp_when_available():
 def test_kill_process_group_windows_calls_proc_kill():
     """On Windows the function falls back to proc.kill() directly."""
     from unittest.mock import MagicMock
-    from minimal_agent.tools.bash import _kill_process_group
+    from coreloop.tools.bash import _kill_process_group
 
     proc = MagicMock()
     with patch("sys.platform", "win32"):
@@ -162,7 +162,7 @@ def test_kill_process_group_unix_sends_sigterm():
     """On Unix the function sends SIGTERM to the process group."""
     import signal as _signal
     from unittest.mock import MagicMock
-    from minimal_agent.tools.bash import _kill_process_group
+    from coreloop.tools.bash import _kill_process_group
 
     proc = MagicMock()
     proc.pid = 1234
@@ -180,7 +180,7 @@ def test_kill_process_group_unix_sends_sigterm():
 def test_kill_process_group_unix_falls_back_on_os_error():
     """An OSError from os.getpgid causes fallback to proc.kill()."""
     from unittest.mock import MagicMock
-    from minimal_agent.tools.bash import _kill_process_group
+    from coreloop.tools.bash import _kill_process_group
 
     proc = MagicMock()
     proc.pid = 1234
@@ -194,7 +194,7 @@ def test_kill_process_group_unix_falls_back_on_os_error():
 
 def test_preexec_setpgid_no_op_when_setpgrp_absent():
     """_preexec_setpgid does nothing when os.setpgrp is absent (Windows)."""
-    from minimal_agent.tools.bash import _preexec_setpgid
+    from coreloop.tools.bash import _preexec_setpgid
     import os as _os
 
     original = getattr(_os, "setpgrp", None)

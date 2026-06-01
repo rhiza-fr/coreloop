@@ -1,11 +1,11 @@
-"""Example showing profiles -- named configurations from minimal-agent.toml.
+"""Example showing profiles -- named configurations from coreloop.toml.
 
-Profiles let you define agent configurations in minimal-agent.toml and load them
+Profiles let you define agent configurations in coreloop.toml and load them
 by name at runtime. Every profile inherits from [profiles.default]; named
 profiles override only the keys they specify. String values support
 {{ENV_VAR}} interpolation.
 
-Example minimal-agent.toml:
+Example coreloop.toml:
 
     [profiles.default]
     model = "qwen3.5:9b"
@@ -29,8 +29,8 @@ uv run examples/example11_profiles.py
 
 import asyncio
 
-from minimal_agent import Agent, Message
-from minimal_agent.profiles import resolve_profile
+from coreloop import Agent, Message
+from coreloop.profiles import resolve_profile
 
 
 async def run(agent: Agent, prompt: str) -> None:
