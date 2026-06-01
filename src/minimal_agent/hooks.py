@@ -48,6 +48,8 @@ logger = logging.getLogger(__name__)
 
 
 class AgentHooks:
+    """Base class for agent lifecycle callbacks. All methods are no-ops by default."""
+
     async def on_before_agent(self, agent: Agent) -> None:
         """Called once at the start of agent.run(), before any LLM call."""
 
@@ -112,9 +114,11 @@ class MaxTurnsHook(AgentHooks):
         self._turns = 0
 
     async def on_before_agent(self, agent: Agent) -> None:
+        """Reset the turn counter at the start of each run."""
         self._turns = 0
 
     async def on_after_turn(self, agent: Agent) -> None:
+        """Increment the counter and stop the agent when the budget is exhausted."""
         self._turns += 1
         if self._turns >= self._n:
             agent.stop()

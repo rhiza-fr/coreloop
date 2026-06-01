@@ -161,6 +161,7 @@ async def test_stream_chat_tool_calls():
 
 
 def test_agent_construct():
+    """Agent constructs with stopped=False; stop() sets stopped=True."""
     agent = Agent(model="qwen3.5:9b")
     assert not agent.stopped
 

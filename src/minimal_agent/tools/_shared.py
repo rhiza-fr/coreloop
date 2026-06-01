@@ -1,3 +1,5 @@
+"""Shared helpers for built-in file tools: path resolution and ToolInfo construction."""
+
 import os
 from pathlib import Path
 
@@ -7,6 +9,7 @@ _MAX_READ_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 def _resolve_safe(requested: str, root: "Path | str") -> str:
+    """Resolve *requested* relative to *root* and raise ValueError on path traversal."""
     if not isinstance(requested, str):
         raise ValueError(f"path must be a string, got {type(requested).__name__}")
 
@@ -31,6 +34,7 @@ def _resolve_safe(requested: str, root: "Path | str") -> str:
 
 
 def _resolve_safe_strict(requested: str, root: "Path | str") -> str:
+    """Like _resolve_safe, but also raises ValueError if the resolved path does not exist."""
     resolved = _resolve_safe(requested, root)
     if not os.path.exists(resolved):
         raise ValueError(f"path does not exist: {requested!r}")
@@ -38,6 +42,7 @@ def _resolve_safe_strict(requested: str, root: "Path | str") -> str:
 
 
 def _fmt_size(size: float) -> str:
+    """Format *size* in bytes as a human-readable string (B, KB, MB, GB, TB)."""
     for unit in ("B", "KB", "MB", "GB"):
         if size < 1024:
             return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
@@ -46,6 +51,7 @@ def _fmt_size(size: float) -> str:
 
 
 def _make_tool_info(fn, **overrides) -> ToolInfo:
+    """Build a ToolInfo from a function, inferring name, description, and schema."""
     name = overrides.pop("name", fn.__name__)
     desc = overrides.pop("description", (fn.__doc__ or "").strip())
     params = _infer_parameters(fn)

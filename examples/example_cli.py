@@ -31,7 +31,7 @@ from minimal_agent.profiles import (
     resolve_profile,
 )  # _load_merged_profile: returns raw dict for get_config lookups
 from minimal_agent._logging import setup_logging  # Internal logging setup (private module)
-from minimal_agent.registry import ToolInfo
+from minimal_agent import ToolInfo
 from minimal_agent.tools import make_tools
 from minimal_agent.web_tools import make_web_tools
 

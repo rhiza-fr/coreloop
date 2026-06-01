@@ -342,31 +342,43 @@ async def test_edit_large_file_unique(sandbox):
 
 
 class TestCharacterLine:
+    """Unit tests for _character_line."""
+
     def test_first_line(self):
+        """Characters before the first newline are on line 1."""
         assert _character_line("abc\ndef\n", 0) == 1  # 'a'
         assert _character_line("abc\ndef\n", 2) == 1  # 'c'
 
     def test_second_line(self):
+        """Characters after the first newline are on line 2."""
         assert _character_line("abc\ndef\n", 4) == 2  # 'd'
 
     def test_newline_itself(self):
+        """The newline character itself is counted as being on the current line."""
         assert _character_line("abc\ndef\n", 3) == 1  # '\n' is still on line 1
 
     def test_empty(self):
+        """Position 0 in an empty string is line 1."""
         assert _character_line("", 0) == 1
 
 
 class TestFindOccurrenceNearLine:
+    """Unit tests for _find_occurrence_near_line."""
+
     def test_match(self):
+        """Returns the char index of the occurrence on the specified line."""
         content = "aaa\nbbb\naaa\n"
         assert _find_occurrence_near_line(content, "aaa", 1) == 0
         assert _find_occurrence_near_line(content, "aaa", 3) == 8
 
     def test_no_match(self):
+        """Returns -1 when the pattern is not on the specified line."""
         assert _find_occurrence_near_line("aaa\nbbb\n", "aaa", 2) == -1
 
     def test_out_of_range(self):
+        """Returns -1 for a line number that doesn't exist in the content."""
         assert _find_occurrence_near_line("aaa\n", "aaa", 99) == -1
 
     def test_not_found(self):
+        """Returns -1 when the pattern is not in the content at all."""
         assert _find_occurrence_near_line("aaa\n", "bbb", 1) == -1

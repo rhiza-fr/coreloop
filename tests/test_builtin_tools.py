@@ -28,6 +28,7 @@ def sandbox():
 
 @pytest.mark.asyncio
 async def test_read_full_file(sandbox):
+    """Reading a file with no offset/limit returns its entire content."""
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
     result = await read.fn("hello.txt")
@@ -36,6 +37,7 @@ async def test_read_full_file(sandbox):
 
 @pytest.mark.asyncio
 async def test_read_with_offset(sandbox):
+    """An offset skips the first N-1 lines and returns the remainder."""
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
     result = await read.fn("hello.txt", offset=3)
@@ -44,6 +46,7 @@ async def test_read_with_offset(sandbox):
 
 @pytest.mark.asyncio
 async def test_read_with_offset_and_limit(sandbox):
+    """offset + limit returns exactly N lines and appends a truncation hint."""
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
     result = await read.fn("hello.txt", offset=2, limit=2)
@@ -55,6 +58,7 @@ async def test_read_with_offset_and_limit(sandbox):
 
 @pytest.mark.asyncio
 async def test_read_beyond_end(sandbox):
+    """An offset past the last line returns an empty string."""
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
     result = await read.fn("hello.txt", offset=100)
@@ -63,6 +67,7 @@ async def test_read_beyond_end(sandbox):
 
 @pytest.mark.asyncio
 async def test_read_nonexistent_file(sandbox):
+    """Reading a missing file returns an Error message."""
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
     result = await read.fn("does_not_exist.txt")
@@ -72,6 +77,7 @@ async def test_read_nonexistent_file(sandbox):
 
 @pytest.mark.asyncio
 async def test_ls_root(sandbox):
+    """ls on '.' lists both files and subdirectory entries."""
     tools = {t.name: t for t in make_tools(sandbox)}
     ls = tools["ls"]
     result = await ls.fn(".")
@@ -81,6 +87,7 @@ async def test_ls_root(sandbox):
 
 @pytest.mark.asyncio
 async def test_ls_subdir(sandbox):
+    """ls on a subdirectory lists its contents."""
     tools = {t.name: t for t in make_tools(sandbox)}
     ls = tools["ls"]
     result = await ls.fn("sub")
@@ -90,6 +97,7 @@ async def test_ls_subdir(sandbox):
 
 @pytest.mark.asyncio
 async def test_ls_nonexistent(sandbox):
+    """ls on a missing path returns an Error message."""
     tools = {t.name: t for t in make_tools(sandbox)}
     ls = tools["ls"]
     result = await ls.fn("does_not_exist")
@@ -98,6 +106,7 @@ async def test_ls_nonexistent(sandbox):
 
 @pytest.mark.asyncio
 async def test_edit_replace(sandbox):
+    """edit replaces a unique string and the change is visible on subsequent read."""
     tools = {t.name: t for t in make_tools(sandbox)}
     edit = tools["edit"]
     result = await edit.fn("hello.txt", old_text="line3", new_text="CHANGED")
@@ -113,6 +122,7 @@ async def test_edit_replace(sandbox):
 
 @pytest.mark.asyncio
 async def test_edit_multiple_with_line_hint(sandbox):
+    """A duplicate old_text requires line_hint; with it, only that occurrence changes."""
     (Path(sandbox) / "multi.txt").write_text("foo\nfoo\nfoo\n", encoding="utf-8")
 
     tools = {t.name: t for t in make_tools(sandbox)}
@@ -133,6 +143,7 @@ async def test_edit_multiple_with_line_hint(sandbox):
 
 @pytest.mark.asyncio
 async def test_edit_not_found(sandbox):
+    """edit with a missing old_text returns a 'not found' error."""
     tools = {t.name: t for t in make_tools(sandbox)}
     edit = tools["edit"]
     result = await edit.fn("hello.txt", old_text="NO_SUCH_TEXT", new_text="x")
@@ -144,6 +155,7 @@ async def test_edit_not_found(sandbox):
 
 @pytest.mark.asyncio
 async def test_path_traversal_rejected(sandbox):
+    """Paths that escape the root are denied with a 'path traversal denied' error."""
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
 
@@ -154,6 +166,7 @@ async def test_path_traversal_rejected(sandbox):
 
 @pytest.mark.asyncio
 async def test_absolute_path_within_root(sandbox):
+    """An absolute path that resolves inside root is accepted."""
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
     abs_path = os.path.join(sandbox, "hello.txt")
@@ -165,16 +178,19 @@ async def test_absolute_path_within_root(sandbox):
 
 
 def test_resolve_safe_within_root(sandbox):
+    """A relative path inside root resolves to an absolute path under root."""
     result = _resolve_safe("hello.txt", sandbox)
     assert os.path.isabs(result)
     assert result.startswith(sandbox)
 
 
 def test_resolve_safe_traversal(sandbox):
+    """A traversal path raises ValueError."""
     with pytest.raises(ValueError, match="path traversal denied"):
         _resolve_safe("../../../etc/passwd", sandbox)
 
 
 def test_resolve_safe_absolute_outside(sandbox):
+    """An absolute path outside root raises ValueError."""
     with pytest.raises(ValueError, match="path traversal denied"):
         _resolve_safe("/etc/passwd", sandbox)

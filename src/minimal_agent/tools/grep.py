@@ -1,3 +1,5 @@
+"""grep.py -- ripgrep-backed pattern search tool."""
+
 import asyncio
 from pathlib import Path
 
@@ -6,6 +8,7 @@ from ._shared import _resolve_safe_strict, _make_tool_info
 
 
 def make_grep_tool(root: str, *, max_chars: int = 20_000, search_timeout: float = 30.0) -> ToolInfo:
+    """Build a grep tool scoped to *root* using ripgrep."""
     root_path = Path(root).resolve()
 
     async def grep(

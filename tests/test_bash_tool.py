@@ -20,7 +20,8 @@ requires_bash = pytest.mark.skipif(not _HAS_BASH, reason="bash not on PATH")
 
 @pytest.fixture
 def sandbox():
-    with tempfile.TemporaryDirectory() as tmp:
+    """Create a temp directory as a bash tool root."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         yield tmp
 
 
@@ -44,6 +45,7 @@ def sandbox():
     ],
 )
 async def test_dangerous_command_is_blocked(sandbox, command):
+    """Each pattern in the default blocklist must reject the matching command."""
     bash = make_bash_tool(sandbox)
     result = await bash.fn(command=command)
     assert result.startswith("Error: command matches blocked pattern")
@@ -73,6 +75,7 @@ async def test_safe_command_not_blocked(sandbox, command):
 @requires_bash
 @pytest.mark.asyncio
 async def test_executes_and_returns_stdout(sandbox):
+    """A simple echo command returns its stdout."""
     bash = make_bash_tool(sandbox)
     result = await bash.fn(command="echo hello")
     assert result == "hello"
@@ -81,6 +84,7 @@ async def test_executes_and_returns_stdout(sandbox):
 @requires_bash
 @pytest.mark.asyncio
 async def test_nonzero_exit_is_prefixed(sandbox):
+    """Non-zero exit code is prepended as 'Exit code: N'."""
     bash = make_bash_tool(sandbox)
     result = await bash.fn(command="echo oops && exit 3")
     assert result == "Exit code: 3\noops"
@@ -89,6 +93,7 @@ async def test_nonzero_exit_is_prefixed(sandbox):
 @requires_bash
 @pytest.mark.asyncio
 async def test_stderr_is_captured(sandbox):
+    """stderr is merged into stdout and returned."""
     bash = make_bash_tool(sandbox)
     result = await bash.fn(command="echo to-stderr 1>&2")
     assert "to-stderr" in result
@@ -97,6 +102,7 @@ async def test_stderr_is_captured(sandbox):
 @requires_bash
 @pytest.mark.asyncio
 async def test_timeout_returns_error_not_hang(sandbox):
+    """A command that exceeds the timeout returns an error, not a hang."""
     bash = make_bash_tool(sandbox)
     result = await bash.fn(command="sleep 5", timeout=1)
     assert result.startswith("Error: command timed out after 1s")
@@ -107,6 +113,7 @@ async def test_timeout_returns_error_not_hang(sandbox):
 
 @pytest.mark.asyncio
 async def test_workdir_outside_root_is_rejected(sandbox):
+    """A workdir that escapes root is rejected with an error."""
     bash = make_bash_tool(sandbox)
     result = await bash.fn(command="echo hi", workdir="..")
     assert result.startswith("Error:")
@@ -116,6 +123,7 @@ async def test_workdir_outside_root_is_rejected(sandbox):
 @requires_bash
 @pytest.mark.asyncio
 async def test_workdir_inside_root_is_honoured(sandbox):
+    """A workdir inside root is used as the command's cwd."""
     bash = make_bash_tool(sandbox)
     result = await bash.fn(command="pwd", workdir=".")
     # Git bash on Windows reports MSYS-style paths, so assert on the leaf dir
@@ -130,8 +138,9 @@ async def test_workdir_inside_root_is_honoured(sandbox):
 @requires_bash
 @pytest.mark.asyncio
 async def test_large_output_is_truncated(sandbox):
+    """Output exceeding max_chars is middle-truncated with a [Truncated:] marker."""
     bash = make_bash_tool(sandbox, max_chars=200)
     # Emit far more than max_chars of output.
-    result = await bash.fn(command="for i in $(seq 1 5000); do echo line$i; done")
+    result = await bash.fn(command="for ((i=1; i<=5000; i++)); do echo line; done")
     assert "[Truncated:" in result
     assert len(result) < 5000

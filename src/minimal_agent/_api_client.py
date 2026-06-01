@@ -90,9 +90,11 @@ class OpenAIBackend:
     _PROTECTED = frozenset({"model", "messages", "stream", "tools", "stream_options"})
 
     def endpoint(self, base_url: str) -> str:
+        """Return the full chat-completions URL for the given base URL."""
         return f"{base_url.rstrip('/')}{self._CHAT_PATH}"
 
     def headers(self, api_key: str | None) -> dict[str, str]:
+        """Return content-type, accept, and optional Bearer auth headers."""
         headers = {
             "Content-Type": "application/json",
             "Accept": "text/event-stream",
@@ -108,6 +110,7 @@ class OpenAIBackend:
         tools: list[ToolInfo] | None,
         extra: dict[str, Any] | None,
     ) -> dict[str, Any]:
+        """Serialize messages and tools into an OpenAI-compatible request body."""
         body: dict[str, Any] = {
             "model": model,
             "messages": _dump_messages(messages),
@@ -126,6 +129,7 @@ class OpenAIBackend:
     async def parse_stream(
         self, resp: httpx.Response, model: str, usage: Usage | None
     ) -> AsyncIterator[Message]:
+        """Parse an OpenAI SSE stream into progressive then final Message objects."""
         accumulated_content: str | None = ""
         accumulated_reasoning: str | None = ""
         accumulated_tool_calls: list[ToolCall] | None = None

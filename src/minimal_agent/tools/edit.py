@@ -1,3 +1,5 @@
+"""edit.py -- atomic string-replace edit tool for text files."""
+
 import os
 import tempfile
 from pathlib import Path
@@ -25,6 +27,7 @@ def _find_occurrence_near_line(content: str, old_text: str, target_line: int) ->
 
 
 def make_edit_tool(root: str, *, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
+    """Build an edit tool scoped to *root* with an atomic write via a temp file."""
     root_path = Path(root).resolve()
 
     async def edit(

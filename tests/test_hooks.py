@@ -40,32 +40,40 @@ class RecordingHook(AgentHooks):
         self.calls: list[str] = []
 
     async def on_before_agent(self, agent: Agent) -> None:
+        """Record the before_agent event."""
         self.calls.append("before_agent")
 
     async def on_after_agent(self, agent: Agent) -> None:
+        """Record the after_agent event."""
         self.calls.append("after_agent")
 
     async def on_before_turn(self, agent: Agent) -> None:
+        """Record the before_turn event."""
         self.calls.append("before_turn")
 
     async def on_after_turn(self, agent: Agent) -> None:
+        """Record the after_turn event."""
         self.calls.append("after_turn")
 
     async def on_before_llm(self, agent: Agent) -> Message | None:
+        """Record the before_llm event and return None (no injection)."""
         self.calls.append("before_llm")
         return None
 
     async def on_after_llm(self, agent: Agent, message: Message) -> Message | None:
+        """Record the after_llm event and return None (no replacement)."""
         self.calls.append("after_llm")
         return None
 
     async def on_before_tool(self, agent: Agent, name: str, args: dict[str, Any]) -> str | None:
+        """Record the before_tool event and return None (no injection)."""
         self.calls.append(f"before_tool:{name}")
         return None
 
     async def on_after_tool(
         self, agent: Agent, name: str, args: dict[str, Any], result: str
     ) -> None:
+        """Record the after_tool event."""
         self.calls.append(f"after_tool:{name}")
 
 
@@ -77,6 +85,7 @@ class InjectingHook(RecordingHook):
         self._responses = iter(responses)
 
     async def on_before_llm(self, agent: Agent) -> Message | None:
+        """Return the next pre-canned response, skipping the real LLM call."""
         await super().on_before_llm(agent)  # records "before_llm"
         return next(self._responses, _text_msg("[end]"))
 
@@ -217,3 +226,24 @@ async def test_on_after_agent_not_called_after_abort():
         pass
 
     assert "after_agent" not in hook.calls
+
+
+# -- Base class on_before_llm default -------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_on_before_llm_default_returns_none():
+    """Base AgentHooks.on_before_llm returns None (no injection, LLM proceeds normally)."""
+    hooks = AgentHooks()
+    agent = _agent(hooks)
+    result = await hooks.on_before_llm(agent)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_on_after_llm_default_returns_none():
+    """Base AgentHooks.on_after_llm returns None (no replacement, original message kept)."""
+    hooks = AgentHooks()
+    agent = _agent(hooks)
+    result = await hooks.on_after_llm(agent, _text_msg("hi"))
+    assert result is None

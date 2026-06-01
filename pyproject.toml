@@ -59,3 +59,11 @@ markers = [
 
 [tool.cq.thresholds]
 "radon-hal" = { warning = 0.45, error = 0.25 }
+
+[tool.interrogate]
+ignore-init-method = true
+ignore-init-module = false
+ignore-semiprivate = true
+ignore-private = true
+ignore-magic = true
+exclude = [".claude"]

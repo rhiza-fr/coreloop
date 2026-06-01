@@ -103,7 +103,9 @@ def tool(
     name: str | None = None,
     description: str | None = None,
     allow_override: bool = False,
-) -> ToolInfo: ...
+) -> ToolInfo:
+    """Use as @tool directly on a function."""
+    ...
 
 
 @overload
@@ -112,7 +114,9 @@ def tool(
     name: str | None = None,
     description: str | None = None,
     allow_override: bool = False,
-) -> Callable[[Callable[..., Coroutine[Any, Any, str]]], ToolInfo]: ...
+) -> Callable[[Callable[..., Coroutine[Any, Any, str]]], ToolInfo]:
+    """Use as @tool(...) with keyword arguments."""
+    ...
 
 
 def tool(
@@ -139,6 +143,7 @@ def tool(
     """
 
     def register(f: Callable[..., Coroutine[Any, Any, str]]) -> ToolInfo:
+        """Build and register a ToolInfo for the decorated function."""
         tool_name = name or getattr(f, "__name__", "")
         if tool_name in _TOOL_REGISTRY and not allow_override:
             raise ValueError(

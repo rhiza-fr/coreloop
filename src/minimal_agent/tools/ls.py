@@ -1,3 +1,5 @@
+"""ls.py -- directory listing tool."""
+
 import os
 from pathlib import Path
 
@@ -6,6 +8,7 @@ from ._shared import _resolve_safe, _resolve_safe_strict, _fmt_size, _make_tool_
 
 
 def make_ls_tool(root: str, *, max_entries: int = 500) -> ToolInfo:
+    """Build an ls tool scoped to *root*, listing up to max_entries per directory."""
     root_path = Path(root).resolve()
 
     async def ls(path: str = ".") -> str:
