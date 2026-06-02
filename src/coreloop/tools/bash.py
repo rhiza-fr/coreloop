@@ -200,7 +200,7 @@ def _kill_process_group(proc: asyncio.subprocess.Process) -> None:
     try:
         pgid = os.getpgid(proc.pid)
         os.killpg(pgid, signal.SIGTERM)
-    except ProcessLookupError, PermissionError, OSError:
+    except (ProcessLookupError, PermissionError, OSError):
         proc.kill()
         return
 
@@ -208,7 +208,7 @@ def _kill_process_group(proc: asyncio.subprocess.Process) -> None:
     def _force_kill() -> None:
         try:
             os.killpg(pgid, signal.SIGKILL)
-        except ProcessLookupError, OSError:
+        except (ProcessLookupError, OSError):
             pass
 
     import threading

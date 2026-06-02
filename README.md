@@ -21,6 +21,8 @@ and `web_fetch` (via the `[web]` extra).
 
 ## Install
 
+Requires Python 3.12+.
+
 ```bash
 pip install coreloop
 pip install "coreloop[web]"   # adds web_search and web_fetch

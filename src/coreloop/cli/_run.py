@@ -82,7 +82,7 @@ async def repl(
     while True:
         try:
             user_input = typer.prompt("You")
-        except EOFError, KeyboardInterrupt:
+        except (EOFError, KeyboardInterrupt):
             break
 
         cmd = user_input.strip().lower()
