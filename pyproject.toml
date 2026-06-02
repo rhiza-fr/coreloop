@@ -35,7 +35,7 @@ Repository = "https://github.com/rhiza-fr/coreloop"
 Issues = "https://github.com/rhiza-fr/coreloop/issues"
 
 [project.optional-dependencies]
-web = ["pvl-webtools[markdown]>=0.1.0"]
+web = ["html-to-markdown>=3.5"]
 
 [project.scripts]
 core = "coreloop.cli:app"

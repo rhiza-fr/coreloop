@@ -180,7 +180,7 @@ docker run -d -p 8080:8080 searxng/searxng
 | Tool | Description |
 |------|-------------|
 | `web_search` | Search via SearXNG; returns titles, URLs, snippets; supports `max_results`, `domain_filter`, `recency` |
-| `web_fetch` | Fetch a URL; `extract_mode`: `markdown` (default), `article`, `raw`, `metadata` |
+| `web_fetch` | Fetch a URL; `extract_mode`: `markdown` (default), `raw`, `metadata` |
 
 ## Custom tools
 
