@@ -254,7 +254,7 @@ async def test_edit_nonexistent_file(sandbox):
 @pytest.mark.asyncio
 async def test_edit_path_traversal(sandbox):
     edit = _edit(sandbox)
-    for bad in ("../../../etc/passwd", "/etc/passwd", "..\\..\\..\\windows\\win.ini"):
+    for bad in ("../../../outside/secret.txt", "/outside/secret.txt", "..\\..\\..\\outside\\secret.txt"):
         result = await edit.fn(bad, old_text="x", new_text="y")
         assert "path traversal denied" in result, f"Expected denial for {bad!r}"
 

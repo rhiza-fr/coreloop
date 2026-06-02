@@ -13,7 +13,8 @@ def _resolve_safe(requested: str, root: "Path | str") -> str:
     if not isinstance(requested, str):
         raise ValueError(f"path must be a string, got {type(requested).__name__}")
 
-    raw = Path(requested)
+    # Normalize Windows-style separators so traversal is caught on all platforms.
+    raw = Path(requested.replace("\\", "/"))
     root_path = Path(root)
     if not raw.is_absolute():
         raw = root_path / raw

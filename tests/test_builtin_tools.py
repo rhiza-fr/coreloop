@@ -159,7 +159,7 @@ async def test_path_traversal_rejected(sandbox):
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
 
-    for bad in ("../../../etc/passwd", "/etc/passwd", "..\\..\\..\\windows\\win.ini"):
+    for bad in ("../../../outside/secret.txt", "/outside/secret.txt", "..\\..\\..\\outside\\secret.txt"):
         result = await read.fn(bad)
         assert "path traversal denied" in result, f"Expected denial for {bad!r}"
 
@@ -187,10 +187,10 @@ def test_resolve_safe_within_root(sandbox):
 def test_resolve_safe_traversal(sandbox):
     """A traversal path raises ValueError."""
     with pytest.raises(ValueError, match="path traversal denied"):
-        _resolve_safe("../../../etc/passwd", sandbox)
+        _resolve_safe("../../../outside/secret.txt", sandbox)
 
 
 def test_resolve_safe_absolute_outside(sandbox):
     """An absolute path outside root raises ValueError."""
     with pytest.raises(ValueError, match="path traversal denied"):
-        _resolve_safe("/etc/passwd", sandbox)
+        _resolve_safe("/outside/secret.txt", sandbox)
