@@ -1,0 +1,231 @@
+# coreloop
+
+A minimal async agent loop over any OpenAI-compatible API. Streams responses, executes tools, and loops until the LLM stops requesting tool calls.
+
+## Install
+
+```
+pip install coreloop
+# or with web tools:
+pip install "coreloop[web]"
+```
+
+## Quickstart
+
+```python
+import asyncio
+from coreloop import Agent, Message
+
+agent = Agent(
+    model="gpt-4o-mini",
+    base_url="https://api.openai.com/v1",
+    api_key="sk-...",
+    system="You are a helpful assistant.",
+)
+
+async def main():
+    messages = [Message(role="user", content="Hello!")]
+    async for msg in agent.run(messages):
+        if not msg.partial:
+            print(msg.content)
+
+asyncio.run(main())
+```
+
+Default `base_url` is `http://localhost:11434/v1` (Ollama).
+
+## Agent constructor
+
+```python
+Agent(
+    model="qwen3:8b",
+    base_url="http://localhost:11434/v1",
+    api_key=None,
+    system=None,
+    tools=None,           # list of tool name strings or ToolInfo objects
+    root=None,            # filesystem root for file tools
+    http_request_timeout=300.0,
+    tool_timeout=360.0,
+    llm_timeout=300.0,
+    hooks=None,           # AgentHooks instance
+    llm_extra_body=None,  # extra fields passed to the LLM API body
+    cache_dir="~/.cache/coreloop-llm-cache",  # None to disable
+)
+```
+
+## AgentConfig (portable config bundle)
+
+```python
+from dataclasses import replace
+from coreloop import AgentConfig, Agent
+
+cfg = AgentConfig(model="qwen3:8b", system="Be terse.")
+fast = replace(cfg, model="qwen3:0.6b", llm_timeout=30.0)
+agent = Agent.from_config(fast)
+```
+
+Fields mirror `Agent.__init__` (except `hooks` and `backend`, which are stateful and passed to `from_config` separately).
+
+## Profiles (coreloop.toml)
+
+```toml
+# ~/.coreloop.toml
+[profiles.default]
+model = "qwen3:8b"
+base_url = "http://localhost:11434/v1"
+
+[profiles.openai]
+model = "gpt-4o-mini"
+base_url = "https://api.openai.com/v1"
+api_key = "{{OPENAI_API_KEY}}"   # resolved from env
+
+[config.tool.bash]
+max_chars = 20000
+```
+
+`{{VAR_NAME}}` in any string value is resolved from the environment.
+
+```python
+from coreloop.profiles import resolve_profile
+cfg = resolve_profile("openai")          # returns AgentConfig
+agent = Agent.from_profile("openai")     # shortcut
+```
+
+## Message
+
+```python
+from coreloop import Message
+
+Message(role="user", content="Hello")
+Message(role="assistant", content="Hi", tool_calls=[...])
+Message(role="tool", content="result", tool_call_id="...", name="read")
+```
+
+Key fields: `role`, `content`, `tool_calls`, `tool_call_id`, `name`, `reasoning` (thinking models, not sent back to API), `partial` (True for streaming deltas), `usage`, `duration`, `model`.
+
+## run() and message history
+
+`agent.run(messages)` is an async generator. Skip `msg.partial is True` to see only complete messages.
+
+```python
+async for msg in agent.run(messages):
+    if not msg.partial:
+        print(msg.role, msg.content)
+
+# Full conversation (system + all turns) after run completes:
+history = agent.messages
+```
+
+Pass `agent.messages` to a new agent to continue the conversation.
+
+## Stopping
+
+```python
+agent.stop()   # finish current turn then exit (on_after_agent is called)
+agent.abort()  # cancel immediately (on_after_agent is NOT called)
+agent.stopped  # True if either was called
+agent.reset()  # clear history and stop flag between runs
+```
+
+## Built-in tools
+
+Pass tool names as strings; file tools are scoped to `root`.
+
+| Name | Description |
+|------|-------------|
+| `read` | Read a file |
+| `ls` | List a directory |
+| `edit` | Apply string replacements to a file |
+| `grep` | Search files with ripgrep |
+| `bash` | Run shell commands (dangerous patterns blocked) |
+| `web_search` | Search via SearXNG JSON API |
+| `web_fetch` | Fetch a URL, returns markdown |
+
+```python
+agent = Agent(model="qwen3:8b", tools=["read", "grep", "bash"], root="/my/project")
+```
+
+`web_search` and `web_fetch` require `pip install "coreloop[web]"`.
+
+## Custom tools via @tool
+
+```python
+from coreloop import tool, Agent
+
+@tool
+async def get_weather(city: str) -> str:
+    """Return current weather for a city."""
+    return f"Sunny in {city}"
+
+# Pass by name (resolved from global registry) or by object:
+agent = Agent(model="qwen3:8b", tools=["get_weather"])
+# or
+agent = Agent(model="qwen3:8b", tools=[get_weather])
+```
+
+`@tool` infers the JSON Schema from type annotations. Supported types: `str`, `int`, `float`, `bool`, `list[T]`, `dict`, `Optional[T]`, `Literal[...]`.
+
+Custom name/description:
+```python
+@tool(name="weather", description="Get current weather for a city.")
+async def get_weather(city: str) -> str: ...
+```
+
+## AgentHooks
+
+Subclass `AgentHooks` to intercept any lifecycle event. Hook exceptions are logged and swallowed — they cannot crash the agent.
+
+```python
+from coreloop import AgentHooks, Agent
+
+class MyHooks(AgentHooks):
+    async def on_before_agent(self, agent): ...
+    async def on_after_agent(self, agent): ...
+    async def on_before_turn(self, agent): ...
+    async def on_after_turn(self, agent): ...
+
+    async def on_before_llm(self, agent):
+        return None  # or return a Message to skip the LLM call
+
+    async def on_after_llm(self, agent, message):
+        return None  # or return a Message to replace it in history
+
+    async def on_before_tool(self, agent, name, args):
+        return None  # or return a str to skip tool execution
+
+    async def on_after_tool(self, agent, name, args, result):
+        return None  # or return a str to replace result in history
+
+agent = Agent(model="qwen3:8b", hooks=MyHooks())
+```
+
+Built-in hook: `MaxTurnsHook(n)` — calls `agent.stop()` after n turns.
+
+```python
+from coreloop import MaxTurnsHook
+agent = Agent(model="qwen3:8b", hooks=MaxTurnsHook(5))
+```
+
+## make_tools / make_web_tools
+
+Lower-level constructors returning `list[ToolInfo]`:
+
+```python
+from coreloop import make_tools, make_web_tools, make_bash_tool
+
+file_tools = make_tools(root="/my/project")  # read, ls, edit, grep
+web_tools = make_web_tools()                 # web_search, web_fetch
+bash = make_bash_tool("/my/project")
+
+agent = Agent(model="qwen3:8b", tools=[*file_tools, bash])
+```
+
+## CLI
+
+```bash
+uv run core --model qwen3:8b                          # interactive REPL
+uv run core -p "summarise this" --model qwen3:8b      # one-shot
+uv run core --tools read,grep --root . --model qwen3:8b
+uv run core --think --model qwen3:8b                  # thinking mode
+uv run core --profile openai -p "hello"               # named profile
+```
