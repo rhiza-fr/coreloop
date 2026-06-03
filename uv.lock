@@ -1,12 +1,6 @@
 version = 1
 revision = 3
 requires-python = ">=3.12"
-resolution-markers = [
-    "python_full_version >= '3.13' and sys_platform == 'win32'",
-    "python_full_version >= '3.13' and sys_platform != 'win32'",
-    "python_full_version < '3.13' and sys_platform == 'win32'",
-    "python_full_version < '3.13' and sys_platform != 'win32'",
-]
 
 [[package]]
 name = "annotated-doc"
@@ -59,7 +53,7 @@ wheels = [
 
 [[package]]
 name = "coreloop"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "." }
 dependencies = [
     { name = "diskcache" },
@@ -248,11 +242,11 @@ wheels = [
 
 [[package]]
 name = "idna"
-version = "3.17"
+version = "3.18"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b9/28/99c51f664567218d824af024c0251650fb27e4ca066df188dab0769c5b91/idna-3.17.tar.gz", hash = "sha256:5eb0cb53bc467c12eadcf6de83163ad8527cec9416f44b9b61b19caedad2b87f", size = 196048, upload-time = "2026-05-28T14:32:38.55Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cd/63/9496c57188a2ee585e0f1db071d75089a11e98aa86eb99d9d7618fc1edce/idna-3.18.tar.gz", hash = "sha256:ffb385a7e039654cef1ab9ef32c6fafe283c0c0467bba1d9029738ce4a14a848", size = 196711, upload-time = "2026-06-02T14:34:07.794Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/a7/f76514cc40ad6234098ecdebda08732d75964776c51a42845b7da10649e2/idna-3.17-py3-none-any.whl", hash = "sha256:466e48829084efe2548012b855df21540b96f2e20e51bd124c851536556a592c", size = 65316, upload-time = "2026-05-28T14:32:37.035Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/5e/d4e9f1a599fb8e573b7b87160658329fbf28d19eac2718f51fc3def3aa5a/idna-3.18-py3-none-any.whl", hash = "sha256:7f952cbe720b688055e3f87de14f5c3e5fdaa8bc3928985c4077ca689de849a2", size = 65455, upload-time = "2026-06-02T14:34:06.319Z" },
 ]
 
 [[package]]
@@ -503,7 +497,7 @@ wheels = [
 
 [[package]]
 name = "typer"
-version = "0.26.4"
+version = "0.26.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
@@ -511,9 +505,9 @@ dependencies = [
     { name = "rich" },
     { name = "shellingham" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8e/d3/90c1ee19209cb59f6ad185883fd4ccfcf72f8f0bfd549d5a8b70474611d0/typer-0.26.4.tar.gz", hash = "sha256:25b128964de66c5ea36d5ac82adc579e5e113509b17469edf9f5a4a1864ff2a9", size = 201191, upload-time = "2026-05-30T17:05:04.213Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/8a/8dc5733b8939e7f1a71173091a6e27a1658345edbff548a0bf3f5bb26173/typer-0.26.6.tar.gz", hash = "sha256:cdbc160fe7e795b835fb6016419494a521a67bfb86b9476a1ccd0e7727d3ae5b", size = 201595, upload-time = "2026-06-02T13:47:50.536Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/6d/5a525c69df4a90892135e5d490b00e9e46402491f3416d4395fcb0d0201e/typer-0.26.4-py3-none-any.whl", hash = "sha256:11bfd7b43557137e373c2b10f6967a555f9678a61ed72c808968b011d95534d6", size = 122436, upload-time = "2026-05-30T17:05:05.812Z" },
+    { url = "https://files.pythonhosted.org/packages/30/c7/519138260db5e2fe03a509bf9e8ef6af9a514d3565c8fa74fc4fededbae1/typer-0.26.6-py3-none-any.whl", hash = "sha256:49f96d9ee5730cef607bbe155042f40b41fa4c0d0dec04990d580837493805be", size = 122464, upload-time = "2026-06-02T13:47:51.768Z" },
 ]
 
 [[package]]
