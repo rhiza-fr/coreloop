@@ -356,6 +356,7 @@ class Agent:
                         return
                     self._llm_last_chunk = chunk
                     if chunk.partial:
+                        await _safe_hook(self.hooks, "on_stream_chunk", self, chunk)
                         yield chunk
                     else:
                         yield chunk.model_copy()

@@ -46,6 +46,11 @@ class LoggingHook(AgentHooks):
             self._log.debug("on_after_llm: content=%r usage=%s", preview, message.usage)
         return None  # None = keep the LLM response unchanged
 
+    async def on_stream_chunk(self, agent: Agent, chunk: Message) -> None:
+        # fires for every partial chunk; log token count when available
+        if chunk.usage and chunk.usage.completion_tokens:
+            self._log.debug("on_stream_chunk: %d completion tokens so far", chunk.usage.completion_tokens)
+
     async def on_before_tool(self, agent: Agent, name: str, args: dict[str, Any]) -> str | None:
         self._log.debug("on_before_tool: %s(%s)", name, args)
         return None  # None = execute the tool normally

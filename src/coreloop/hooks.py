@@ -11,6 +11,10 @@ Hooks fire in this order during a single agent.run() call:
             # Return a Message to inject as the response (LLM call is skipped).
             # Return None to call the LLM normally.
         <LLM streams response>
+            on_stream_chunk(agent, chunk) -> None
+                # Called for each partial Message chunk as it arrives from the
+                # LLM stream.  chunk.partial is True.  Return value is ignored.
+                # Use for progress display, token counting, or early abort.
         on_after_llm(agent, message) -> Message | None
             # Return a Message to replace what gets appended to conversation
             # history.  Return None to use the message as-is.
@@ -92,6 +96,14 @@ class AgentHooks:
         history.  Return None to use the result as-is.
         """
         return None
+
+    async def on_stream_chunk(self, agent: Agent, chunk: Message) -> None:
+        """Called for each partial chunk as it arrives from the LLM stream.
+
+        ``chunk.partial`` is always ``True``.  The return value is ignored.
+        Use this for real-time progress display, per-token logging, or calling
+        ``agent.stop()`` to abort the stream early.
+        """
 
     async def on_before_turn(self, agent: Agent) -> None:
         """Called at the start of each turn, before the LLM call."""
