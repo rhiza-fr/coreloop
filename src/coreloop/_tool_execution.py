@@ -41,11 +41,11 @@ async def exec_tool(tc: ToolCall, agent: "Agent") -> tuple[ToolCall, str, float]
         replacement = await _safe_hook(agent.hooks, "on_after_tool", agent, name, args, result)
         return tc, replacement if replacement is not None else result, 0.0
 
-    logger.info("Tool call: %s(%s)", name, json.dumps(args, ensure_ascii=False) if args else "")
+    logger.debug("Tool call: %s(%s)", name, json.dumps(args, ensure_ascii=False) if args else "")
     t0 = time.perf_counter()
     result = await run_tool(info, args, agent.tool_timeout)
     duration = time.perf_counter() - t0
-    logger.info("Tool '%s' completed in %.2fs", name, duration)
+    logger.debug("Tool '%s' completed in %.2fs", name, duration)
 
     replacement = await _safe_hook(agent.hooks, "on_after_tool", agent, name, args, result)
     if replacement is not None:

@@ -37,6 +37,8 @@ rather than propagating it.  Hook bugs cannot crash the agent.  To request
 a clean exit from inside a hook, call agent.stop().
 """
 
+from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING, Any
 
