@@ -294,3 +294,84 @@ def test_agent_from_profile_named(tmp_path):
     agent = Agent.from_profile("fast", config_path=tmp_path / "test.toml")
     assert agent.model == "fast-model"
     assert agent._base_url == "http://localhost/v1"  # inherited from default
+
+
+# -- reasoning_effort in llm_extra_body ----------------------------------------
+
+
+_REASONING_CONFIG = {
+    "profiles": {
+        "default": {
+            "model": "base-model",
+            "base_url": "http://localhost:11434/v1",
+        },
+        "thinking": {
+            "model": "think-model",
+            "llm_extra_body": {"reasoning_effort": "high"},
+        },
+    },
+    "config": {},
+}
+
+
+def test_resolve_profile_preserves_llm_extra_body():
+    """A profile that sets llm_extra_body is faithfully returned by resolve_profile."""
+    with patch("coreloop.profiles._load_config", return_value=_REASONING_CONFIG):
+        cfg = resolve_profile("thinking")
+    assert cfg.llm_extra_body == {"reasoning_effort": "high"}
+
+
+def test_resolve_profile_llm_extra_body_not_overridden_by_default():
+    """The default profile does not override a named profile's llm_extra_body."""
+    with patch("coreloop.profiles._load_config", return_value=_REASONING_CONFIG):
+        cfg = resolve_profile("thinking")
+        default_cfg = resolve_profile("default")
+    assert cfg.llm_extra_body == {"reasoning_effort": "high"}
+    assert default_cfg.llm_extra_body is None
+
+
+def test_cli_does_not_override_profile_reasoning_when_think_unset():
+    """When --think/--no-think is not passed, the profile's llm_extra_body is kept."""
+    # Simulate the CLI logic: think=None (flag absent), no --extra flag
+    from coreloop.config import AgentConfig
+
+    agent_cfg = AgentConfig(
+        model="think-model",
+        base_url="http://localhost/v1",
+        llm_extra_body={"reasoning_effort": "high"},
+    )
+
+    # Reproduce the CLI branch (cli/__init__.py lines 216-226)
+    llm_extra_body_cli_flag = None  # --extra not passed
+    think = None  # --think/--no-think not passed
+
+    extra_body = None
+    if llm_extra_body_cli_flag:
+        import json
+        extra_body = json.loads(llm_extra_body_cli_flag)
+    if think is not None:
+        extra_body = (extra_body or {}) | {"reasoning_effort": "medium" if think else "none"}
+    if extra_body is not None:
+        agent_cfg.llm_extra_body = extra_body
+
+    assert agent_cfg.llm_extra_body == {"reasoning_effort": "high"}
+
+
+def test_cli_no_think_overrides_profile_reasoning():
+    """--no-think explicitly sets reasoning_effort to 'none', overriding the profile."""
+    from coreloop.config import AgentConfig
+
+    agent_cfg = AgentConfig(
+        model="think-model",
+        base_url="http://localhost/v1",
+        llm_extra_body={"reasoning_effort": "high"},
+    )
+
+    think = False  # --no-think passed
+    extra_body = None
+    if think is not None:
+        extra_body = (extra_body or {}) | {"reasoning_effort": "medium" if think else "none"}
+    if extra_body is not None:
+        agent_cfg.llm_extra_body = extra_body
+
+    assert agent_cfg.llm_extra_body == {"reasoning_effort": "none"}
