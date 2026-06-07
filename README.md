@@ -50,7 +50,7 @@ async def main():
 asyncio.run(main())
 ```
 
-Or load settings from a named profile in `~/coreloop.toml`:
+Or load settings from a named profile in `~/.coreloop.toml`:
 
 ```python
 agent = Agent.from_profile("openai")
@@ -59,7 +59,7 @@ agent = Agent.from_profile("openai")
 ## CLI
 
 `core` is a REPL / one-shot runner with profile support. On first run it copies
-the bundled `coreloop.toml` to `~/coreloop.toml` — edit that file to set
+the bundled `coreloop.toml` to `~/.coreloop.toml` — edit that file to set
 your default model, tools, and provider credentials.
 
 ```bash
@@ -81,7 +81,7 @@ core --think -p "Explain this step by step" --model qwen3-14b
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--profile` | `default` | Named profile from `~/coreloop.toml` |
+| `--profile` | `default` | Named profile from `~/.coreloop.toml` |
 | `-m, --model` | profile value | Model name — overrides profile (`CORELOOP_MODEL`) |
 | `--base-url` | profile value | API base URL — overrides profile (`CORELOOP_BASE_URL`) |
 | `--api-key` | profile value | API key — overrides profile (`CORELOOP_API_KEY`) |
@@ -265,7 +265,7 @@ swallowed — they cannot crash the agent.
 
 ## Config profiles
 
-`Agent.from_profile("openai")` builds an `AgentConfig` from `~/coreloop.toml`
+`Agent.from_profile("openai")` builds an `AgentConfig` from `~/.coreloop.toml`
 (or `$CORELOOP_CONFIG`). Every profile inherits from `[profiles.default]`; named
 profiles override individual keys.
 
