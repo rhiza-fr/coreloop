@@ -140,6 +140,6 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
             return page_html[:_MAX_RAW_CHARS]
         if extract_mode == "metadata":
             return _metadata(page_html)
-        return _convert(page_html).content[:_MAX_MARKDOWN_CHARS]
+        return (_convert(page_html).content or "")[:_MAX_MARKDOWN_CHARS]
 
     return [_make_tool_info(web_search), _make_tool_info(web_fetch)]
