@@ -1,7 +1,7 @@
 """Thorough unit tests for the built-in ``edit`` tool.
 
-Tests single-replacement-only semantics, line_hint disambiguation,
-empty/error cases, special characters, concurrency, and large files.
+Tests single-replacement-only semantics, empty/error cases, special characters,
+concurrency, and large files.
 """
 
 import os
@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 
 from coreloop.tools import make_tools
-from coreloop.tools.edit import _character_line, _find_occurrence_near_line
 
 
 # -- Fixture ---------------------------------------------------
@@ -81,81 +80,23 @@ async def test_edit_identity_unique(sandbox):
     assert "line3" in await read.fn("hello.txt")
 
 
-# -- Ambiguous (multiple occurrences, no line_hint) ------------
+# -- Ambiguous (multiple occurrences) -------------------------
 
 
 @pytest.mark.asyncio
 async def test_edit_ambiguous_errors(sandbox):
-    """old_text that appears multiple times without line_hint -> error."""
+    """old_text that appears multiple times -> error."""
     edit = _edit(sandbox)
     result = await edit.fn("hello.txt", old_text="line", new_text="ROW")
     assert "appears 5 times" in result
-    assert "line_hint" in result
 
 
 @pytest.mark.asyncio
 async def test_edit_ambiguous_trailing_whitespace(sandbox):
-    """Multiple matches without line_hint -> error."""
+    """Multiple matches -> error."""
     edit = _edit(sandbox)
     result = await edit.fn("multi.txt", old_text="hello world", new_text="matched")
     assert "appears 3 times" in result
-    assert "line_hint" in result
-
-
-# -- Line-hint disambiguation ---------------------------------
-
-
-@pytest.mark.asyncio
-async def test_edit_with_line_hint_first(sandbox):
-    """line_hint pinpoints the first occurrence."""
-    edit = _edit(sandbox)
-    result = await edit.fn("multi.txt", old_text="hello world", new_text="FIRST", line_hint=1)
-    assert "Replaced 1" in result
-
-    read = _read(sandbox)
-    content = await read.fn("multi.txt")
-    assert content == "FIRST  \nhello world  \nhello world  \n"
-
-
-@pytest.mark.asyncio
-async def test_edit_with_line_hint_middle(sandbox):
-    """line_hint pinpoints the second occurrence."""
-    edit = _edit(sandbox)
-    result = await edit.fn("multi.txt", old_text="hello world", new_text="MIDDLE", line_hint=2)
-    assert "Replaced 1" in result
-
-    read = _read(sandbox)
-    content = await read.fn("multi.txt")
-    assert content == "hello world  \nMIDDLE  \nhello world  \n"
-
-
-@pytest.mark.asyncio
-async def test_edit_with_line_hint_last(sandbox):
-    """line_hint pinpoints the last occurrence."""
-    edit = _edit(sandbox)
-    result = await edit.fn("multi.txt", old_text="hello world", new_text="LAST", line_hint=3)
-    assert "Replaced 1" in result
-
-    read = _read(sandbox)
-    content = await read.fn("multi.txt")
-    assert content == "hello world  \nhello world  \nLAST  \n"
-
-
-@pytest.mark.asyncio
-async def test_edit_line_hint_wrong_line(sandbox):
-    """line_hint pointing to a line without the text -> error."""
-    edit = _edit(sandbox)
-    result = await edit.fn("multi.txt", old_text="hello world", new_text="X", line_hint=99)
-    assert "Error" in result
-    assert "none are on line" in result
-
-
-@pytest.mark.asyncio
-async def test_edit_line_hint_unique_still_works(sandbox):
-    """line_hint on a unique match still works (just ignores the hint)."""
-    edit = _edit(sandbox)
-    result = await edit.fn("hello.txt", old_text="line3", new_text="OK", line_hint=3)
-    assert "Replaced 1" in result
 
 
 # -- Empty / not-found cases -----------------------------------
@@ -336,49 +277,3 @@ async def test_edit_large_file_unique(sandbox):
 
     read = _read(sandbox)
     assert "CHANGED" in await read.fn("large.txt", offset=5001, limit=1)
-
-
-# -- Helper unit tests -----------------------------------------
-
-
-class TestCharacterLine:
-    """Unit tests for _character_line."""
-
-    def test_first_line(self):
-        """Characters before the first newline are on line 1."""
-        assert _character_line("abc\ndef\n", 0) == 1  # 'a'
-        assert _character_line("abc\ndef\n", 2) == 1  # 'c'
-
-    def test_second_line(self):
-        """Characters after the first newline are on line 2."""
-        assert _character_line("abc\ndef\n", 4) == 2  # 'd'
-
-    def test_newline_itself(self):
-        """The newline character itself is counted as being on the current line."""
-        assert _character_line("abc\ndef\n", 3) == 1  # '\n' is still on line 1
-
-    def test_empty(self):
-        """Position 0 in an empty string is line 1."""
-        assert _character_line("", 0) == 1
-
-
-class TestFindOccurrenceNearLine:
-    """Unit tests for _find_occurrence_near_line."""
-
-    def test_match(self):
-        """Returns the char index of the occurrence on the specified line."""
-        content = "aaa\nbbb\naaa\n"
-        assert _find_occurrence_near_line(content, "aaa", 1) == 0
-        assert _find_occurrence_near_line(content, "aaa", 3) == 8
-
-    def test_no_match(self):
-        """Returns -1 when the pattern is not on the specified line."""
-        assert _find_occurrence_near_line("aaa\nbbb\n", "aaa", 2) == -1
-
-    def test_out_of_range(self):
-        """Returns -1 for a line number that doesn't exist in the content."""
-        assert _find_occurrence_near_line("aaa\n", "aaa", 99) == -1
-
-    def test_not_found(self):
-        """Returns -1 when the pattern is not in the content at all."""
-        assert _find_occurrence_near_line("aaa\n", "bbb", 1) == -1

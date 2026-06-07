@@ -173,4 +173,7 @@ def resolve_profile(
 
     raw = _interpolate_strings(_load_merged_profile(name, config_path=config_path))
     known = {f.name for f in dataclasses.fields(AgentConfig)}
-    return AgentConfig(**{k: v for k, v in raw.items() if k in known})
+    filtered = {k: v for k, v in raw.items() if k in known}
+    if isinstance(filtered.get("tools"), str):
+        filtered["tools"] = [t.strip() for t in filtered["tools"].split(",") if t.strip()]
+    return AgentConfig(**filtered)

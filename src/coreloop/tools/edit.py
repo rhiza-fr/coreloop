@@ -8,24 +8,6 @@ from ..tool_registry import ToolInfo
 from ._shared import _fmt_size, _make_tool_info, _resolve_safe, _resolve_safe_strict
 
 
-def _character_line(content: str, pos: int) -> int:
-    """Return the 1-based line number for character position *pos* in *content*."""
-    return content[:pos].count("\n") + 1
-
-
-def _find_occurrence_near_line(content: str, old_text: str, target_line: int) -> int:
-    """Find the first occurrence of *old_text* whose 1-based line number
-    matches *target_line*.  Returns the character index or ``-1``."""
-    idx = -1
-    while True:
-        idx = content.find(old_text, idx + 1)
-        if idx < 0:
-            break
-        if _character_line(content, idx) == target_line:
-            return idx
-    return -1
-
-
 def make_edit_tool(root: str, *, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
     """Build an edit tool scoped to *root* with an atomic write via a temp file."""
     root_path = Path(root).resolve()
@@ -34,13 +16,8 @@ def make_edit_tool(root: str, *, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
         path: str,
         old_text: str,
         new_text: str,
-        line_hint: int | None = None,
     ) -> str:
         """Use this to make a targeted edit to a file by replacing an exact string. To create a new file, pass old_text as an empty string.
-
-        If *old_text* appears multiple times, ``line_hint`` is required to
-        disambiguate.  Pass the 1-based line number where the text to
-        replace appears.
 
         To create a new file, pass ``old_text=""`` - the file must not already
         exist.  Parent directories are created automatically.
@@ -50,13 +27,10 @@ def make_edit_tool(root: str, *, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
         path :
             Relative or absolute path to the file.
         old_text :
-            Exact text to search for (must appear exactly once, unless
-            ``line_hint`` is given).  Pass ``""`` to create a new file.
+            Exact text to search for (must appear exactly once).
+            Pass ``""`` to create a new file.
         new_text :
             Replacement text (or full content when creating a new file).
-        line_hint :
-            Optional 1-based line number that *old_text* appears on.
-            Required when *old_text* appears more than once.
         """
         if not old_text:
             try:
@@ -117,18 +91,10 @@ def make_edit_tool(root: str, *, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
 
             if count == 1:
                 idx = content.find(old_text)
-            elif line_hint is not None:
-                idx = _find_occurrence_near_line(content, old_text, line_hint)
-                if idx < 0:
-                    return (
-                        f"Error: old_text {old_text!r} appears {count} times in "
-                        f"{path!r} but none are on line {line_hint}"
-                    )
             else:
                 return (
                     f"Error: old_text {old_text!r} appears {count} times in "
-                    f"{path!r}. Provide line_hint to specify which occurrence "
-                    f"to replace."
+                    f"{path!r}. Use a longer, unique excerpt as old_text."
                 )
 
         new_content = content[:idx] + new_text + content[idx + len(old_text) :]
