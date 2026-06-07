@@ -26,7 +26,7 @@ def _ollama_available() -> bool:
     try:
         r = httpx.get(f"{OLLAMA_HOST}/models", timeout=5.0)
         return r.status_code == 200
-    except httpx.ConnectError, httpx.TimeoutException:
+    except (httpx.ConnectError, httpx.TimeoutException):
         return False
 
 

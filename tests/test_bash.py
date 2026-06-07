@@ -55,7 +55,7 @@ async def test_empty_dangerous_patterns_blocks_nothing(sandbox):
 async def test_max_timeout_clamps_requested_timeout(sandbox):
     """A timeout larger than max_timeout is silently clamped to max_timeout."""
     bash = make_bash_tool(sandbox, max_timeout=1)
-    result = await bash.fn(command="sleep 5", timeout=9999)
+    result = await bash.fn(command="sleep 2", timeout=9999)
     # Should time out at 1s, not 9999s
     assert result.startswith("Error: command timed out after 1s")
 
@@ -80,7 +80,7 @@ async def test_max_raw_bytes_triggers_truncation(sandbox):
 async def test_default_timeout_is_applied(sandbox):
     """default_timeout is used when the caller does not pass a timeout argument."""
     bash = make_bash_tool(sandbox, default_timeout=1, max_timeout=2)
-    result = await bash.fn(command="sleep 5")
+    result = await bash.fn(command="sleep 2")
     assert result.startswith("Error: command timed out after 1s")
 
 

@@ -155,8 +155,15 @@ async def test_rg_timeout_returns_error(sandbox):
     from unittest.mock import MagicMock, patch as _patch
     import asyncio as _asyncio
 
+    call_count = 0
+
     async def _slow_communicate():
-        await _asyncio.sleep(10)
+        # First call is cancelled by wait_for at search_timeout; the post-kill
+        # drain call must return immediately (a real killed process drains fast).
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            await _asyncio.sleep(10)
         return b"", b""
 
     mock_proc = MagicMock()
