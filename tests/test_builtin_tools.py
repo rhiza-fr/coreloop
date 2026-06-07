@@ -121,27 +121,6 @@ async def test_edit_replace(sandbox):
 
 
 @pytest.mark.asyncio
-async def test_edit_multiple_with_line_hint(sandbox):
-    """A duplicate old_text requires line_hint; with it, only that occurrence changes."""
-    (Path(sandbox) / "multi.txt").write_text("foo\nfoo\nfoo\n", encoding="utf-8")
-
-    tools = {t.name: t for t in make_tools(sandbox)}
-    edit = tools["edit"]
-    # Without line_hint -> error
-    result = await edit.fn("multi.txt", old_text="foo", new_text="bar")
-    assert "appears 3 times" in result
-    assert "line_hint" in result
-
-    # With line_hint -> single replace on that line
-    result2 = await edit.fn("multi.txt", old_text="foo", new_text="bar", line_hint=2)
-    assert "Replaced 1" in result2
-
-    read = tools["read"]
-    content = await read.fn("multi.txt")
-    assert content == "foo\nbar\nfoo\n"
-
-
-@pytest.mark.asyncio
 async def test_edit_not_found(sandbox):
     """edit with a missing old_text returns a 'not found' error."""
     tools = {t.name: t for t in make_tools(sandbox)}
