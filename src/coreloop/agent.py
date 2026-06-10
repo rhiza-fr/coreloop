@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import uuid
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, AsyncIterator
@@ -119,11 +120,13 @@ class Agent:
         llm_extra_body: dict[str, Any] | None = None,
         cache_dir: Path | str | None = _DEFAULT_CACHE_DIR,
         backend: Backend | None = None,
+        system_nonce: bool = False,
     ) -> None:
         # Public -- safe to read/write between runs
         self.model = model
         self.system = system
         self.root = root
+        self.system_nonce = system_nonce
         self.http_request_timeout = http_request_timeout
         self.tool_timeout = tool_timeout
         self.llm_timeout = llm_timeout
@@ -258,6 +261,16 @@ class Agent:
 
         if self.system and not (self._messages and self._messages[0].role == "system"):
             self._messages.insert(0, Message(role="system", content=self.system))
+
+        # Prepend a per-run nonce to the system prompt so each run has a unique
+        # prefix. This defeats Ollama's cross-request prompt-cache reuse (slot
+        # selection by longest-common-prefix similarity), which can corrupt KV
+        # state across independent requests that share a system prompt. The
+        # nonce is constant within a run, so intra-conversation caching is kept.
+        if self.system_nonce and self._messages and self._messages[0].role == "system":
+            sys0 = self._messages[0]
+            nonce = f"[run:{uuid.uuid4().hex}]\n"
+            self._messages[0] = sys0.model_copy(update={"content": nonce + (sys0.content or "")})
 
         logger.debug("Agent.run starting: model=%s base_url=%s", self.model, self._base_url)
         await _safe_hook(self.hooks, "on_before_agent", self)

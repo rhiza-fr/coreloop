@@ -31,3 +31,4 @@ class AgentConfig:
     llm_timeout: float = 300.0
     llm_extra_body: dict[str, Any] | None = None
     cache_dir: str | None = str(Path.home() / ".cache" / "coreloop-llm-cache")
+    system_nonce: bool = False
