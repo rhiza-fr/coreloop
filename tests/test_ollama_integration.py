@@ -14,8 +14,9 @@ from pathlib import Path
 
 import httpx
 import pytest
+from pydantic import BaseModel
 
-from coreloop import Agent, Message, make_tools
+from coreloop import Agent, Message, complete, make_tools
 
 OLLAMA_HOST = "http://192.168.0.101:11434/v1"
 MODEL = "qwen3.5:9b"
@@ -277,3 +278,56 @@ async def test_multi_turn_conversation(agent, sandbox):
     print(
         f"[OK] Multi-turn conversation: ls -> read. Read result: {(read_msgs[0].content or '')[:100]}"
     )
+
+
+# -- Structured output -----------------------------------------
+
+
+class _Fruit(BaseModel):
+    name: str
+    color: str
+    seeds: bool
+
+
+class _FileReport(BaseModel):
+    filename: str
+    line_count: int
+    summary: str
+
+
+async def test_complete_with_schema(agent):
+    """complete() with a schema returns a validated instance from a live model."""
+    result = await complete(
+        "Describe a banana.",
+        model=MODEL,
+        base_url=OLLAMA_HOST,
+        schema=_Fruit,
+        timeout=TIMEOUT,
+        cache_dir=None,
+    )
+    assert isinstance(result, _Fruit)
+    assert result.name.strip()
+    assert result.color.strip()
+    print(f"[OK] structured output: {result!r}")
+
+
+async def test_loop_then_extract(agent, sandbox):
+    """Run the agent with tools, then extract a structured record from its history."""
+    results = await _collect(
+        agent,
+        [Message(role="user", content="Read data.txt using the read tool and report its lines.")],
+    )
+    if not any(m.role == "tool" for m in results):
+        pytest.skip(f"Model did not call a tool.\n{_fmt(results)}")
+
+    record = await complete(
+        agent.messages + [Message(role="user", content="Summarize the file you read.")],
+        model=MODEL,
+        base_url=OLLAMA_HOST,
+        schema=_FileReport,
+        timeout=TIMEOUT,
+        cache_dir=None,
+    )
+    assert isinstance(record, _FileReport)
+    assert record.line_count >= 0
+    print(f"[OK] loop-then-extract: {record!r}")

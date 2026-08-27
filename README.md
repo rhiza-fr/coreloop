@@ -293,6 +293,39 @@ pre-configured profiles for Ollama, OpenAI, Groq, DeepSeek, Together, and OpenRo
 `dataclasses.replace(cfg, model="other")` to derive variants, or `Agent.from_config(cfg)`
 to construct an agent from one.
 
+## Structured output
+
+`complete()` is a one-shot call — no tools, no loop. With `schema`, output is constrained
+via `response_format: {"type": "json_schema"}` and validated before it is returned.
+
+```python
+from pydantic import BaseModel
+from coreloop import complete
+
+class Triage(BaseModel):
+    category: str
+    urgent: bool
+
+result = await complete("Kettle broke again.", model="qwen3:8b", schema=Triage)
+# -> Triage(category='...', urgent=True)
+```
+
+Without `schema` it returns the final `Message`. `ValidationError` propagates to the
+caller, so retry policy stays yours.
+
+`prompt` also accepts a message list, which makes "loop, then extract" compose:
+
+```python
+async for _ in agent.run([Message(role="user", content="Check the logs and triage.")]):
+    pass
+
+record = await complete(agent.messages, model="qwen3:8b", schema=Triage)
+```
+
+It is deliberately not an `Agent` parameter: constrained decoding and tool-calling cannot
+coexist in one turn, so the loop stays unconstrained and `complete()` is the terminal
+extraction step.
+
 ## `Message`
 
 | Field | Type | Description |

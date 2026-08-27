@@ -7,7 +7,7 @@ is the shared shell around any backend -- it owns the httpx connection, response
 caching, timing, and HTTP error handling.
 
 Only one backend ships today (:class:`OpenAIBackend`, OpenAI-compatible chat
-completions).  Adding another provider means implementing the four ``Backend``
+completions).  Adding another provider means implementing the ``Backend``
 methods; nothing else in the agent loop needs to change.
 
 Note: Ollama via the OpenAI endpoint does not stream thinking models. They
@@ -20,8 +20,10 @@ import time
 from typing import Any, AsyncIterator, Protocol
 
 import httpx
+from pydantic import BaseModel
 
 from ._cache import request_key
+from .structured import to_strict_schema
 from .tool_registry import ToolInfo
 from .types import FunctionCall, Message, ToolCall, Usage, _dump_messages
 
@@ -31,7 +33,7 @@ logger = logging.getLogger(__name__)
 class Backend(Protocol):
     """Provider-specific request shaping and stream parsing.
 
-    Implement these four methods to add a provider. The agent loop and
+    Implement these methods to add a provider. The agent loop and
     ``stream_chat`` shell are backend-agnostic.
     """
 
@@ -51,6 +53,10 @@ class Backend(Protocol):
         extra: dict[str, Any] | None,
     ) -> dict[str, Any]:
         """Serialize canonical messages + tools into the provider's request body."""
+        ...
+
+    def response_format(self, schema: type[BaseModel]) -> dict[str, Any]:
+        """Return body fields that constrain output to *schema*, or {} if unsupported."""
         ...
 
     def parse_stream(
@@ -125,6 +131,19 @@ class OpenAIBackend:
                 if k not in self._PROTECTED:
                     body[k] = v
         return body
+
+    def response_format(self, schema: type[BaseModel]) -> dict[str, Any]:
+        """Return the ``response_format`` body fragment constraining output to *schema*."""
+        return {
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": schema.__name__,
+                    "strict": True,
+                    "schema": to_strict_schema(schema),
+                },
+            }
+        }
 
     async def parse_stream(
         self, resp: httpx.Response, model: str, usage: Usage | None
@@ -265,6 +284,7 @@ async def stream_chat(
     model: str,
     messages: list[Message],
     tools: list[ToolInfo] | None = None,
+    schema: type[BaseModel] | None = None,
     timeout: float = 60.0,
     client: httpx.AsyncClient | None = None,
     llm_extra_body: dict[str, Any] | None = None,
@@ -278,11 +298,16 @@ async def stream_chat(
     serves/stores cached responses, manages the httpx connection, attaches
     wall-clock ``duration`` to the final message, and raises on HTTP errors.
 
+    With *schema*, the backend's ``response_format`` fields are merged into the
+    body after ``build_body``, so the cache key covers the schema too.
+
     Yields progressively richer *assistant* ``Message`` objects. The last yielded
     message for a turn has either ``content`` set **or** ``tool_calls`` populated
     (or both), plus ``usage`` and ``duration``.
     """
     body = backend.build_body(model, messages, tools, llm_extra_body)
+    if schema is not None:
+        body.update(backend.response_format(schema))
 
     cache_key: str | None = None
     if cache is not None:

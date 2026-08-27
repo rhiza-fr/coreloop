@@ -206,6 +206,51 @@ from coreloop import MaxTurnsHook
 agent = Agent(model="qwen3:8b", hooks=MaxTurnsHook(5))
 ```
 
+## Structured output
+
+`complete()` is a one-shot call with no tools and no loop. With `schema`, output is
+constrained by `response_format: {"type": "json_schema"}` and validated before return.
+
+```python
+from pydantic import BaseModel
+from coreloop import complete
+
+class Triage(BaseModel):
+    category: str
+    urgent: bool
+
+result = await complete("Kettle broke again.", model="qwen3:8b", schema=Triage)
+# -> Triage(category='...', urgent=True)
+```
+
+```python
+async def complete(
+    prompt: str | list[Message], *, model: str,
+    base_url: str = "http://localhost:11434/v1", api_key: str | None = None,
+    system: str | None = None, schema: type[T] | None = None, timeout: float = 300.0,
+    llm_extra_body: dict | None = None, usage: Usage | None = None,
+    cache_dir: Path | str | None = ..., backend: Backend = OPENAI_BACKEND,
+) -> Message | T: ...
+```
+
+Without `schema` it returns the final `Message`. `ValidationError` propagates -- wrap the
+call if you want retry.
+
+Loop, then extract -- `prompt` accepts a message list, so `agent.messages` composes:
+
+```python
+async for _ in agent.run([Message(role="user", content="Check the logs and triage.")]):
+    pass
+
+record = await complete(agent.messages, model="qwen3:8b", schema=Triage)
+```
+
+This is not an `Agent` parameter: constrained decoding and tool-calling cannot coexist in
+one turn, so the loop stays unconstrained and `complete()` is the terminal extraction step.
+
+`to_strict_schema(Model)` returns the strict-legal JSON Schema `complete()` sends
+(`additionalProperties: false`, every property required, no `title`/`default`).
+
 ## make_tools / make_web_tools
 
 Lower-level constructors returning `list[ToolInfo]`:
