@@ -260,9 +260,11 @@ async def test_multi_turn_conversation(agent, sandbox):
     if not turn1_has_tool:
         pytest.skip(f"Model did not call tool in turn 1.\n{_fmt(turn1)}")
 
-    # Build conversation for turn 2
-    conv = [Message(role="user", content=f"List files in {sandbox} using ls.")]
-    conv.extend(turn1)
+    # Build conversation for turn 2 from the agent's own history. The stream
+    # yielded by run() includes partial=True deltas, which must not be replayed:
+    # a reasoning-only delta has content=None and no tool_calls, which Ollama
+    # rejects with "invalid message content type: <nil>".
+    conv = list(agent.messages)
 
     turn2 = await _collect(
         agent,
