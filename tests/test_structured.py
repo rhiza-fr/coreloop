@@ -260,3 +260,49 @@ async def test_complete_empty_content_raises(calls):
     calls.reply["value"] = ""
     with pytest.raises(ValueError, match="Empty response"):
         await complete("hi", model="m", schema=Flat, cache_dir=None)
+
+
+class KeywordNames(BaseModel):
+    """Fields whose names collide with the schema keywords we strip."""
+
+    title: str
+    default: int
+    name: str
+
+
+def test_field_names_colliding_with_stripped_keywords_survive():
+    """``title``/``default`` are keywords in a schema node, field names in a map.
+
+    Stripping them from ``properties`` deleted the fields while leaving them in
+    ``required``, producing a self-contradictory schema and a model that could
+    never satisfy it.
+    """
+    schema = to_strict_schema(KeywordNames)
+
+    assert set(schema["properties"]) == {"title", "default", "name"}
+    assert set(schema["required"]) == {"title", "default", "name"}
+    assert schema["properties"]["title"]["type"] == "string"
+    assert schema["properties"]["default"]["type"] == "integer"
+    # The node-level annotation keyword is still gone.
+    assert "title" not in {k: v for k, v in schema.items() if k != "properties"}
+
+
+def test_required_always_matches_properties_everywhere():
+    """No object may name a required property it does not define."""
+
+    def walk(node):
+        if isinstance(node, list):
+            for item in node:
+                walk(item)
+        elif isinstance(node, dict):
+            if isinstance(node.get("properties"), dict):
+                assert set(node["required"]) == set(node["properties"])
+            for key, value in node.items():
+                if key in ("properties", "$defs"):
+                    for sub in value.values():
+                        walk(sub)
+                else:
+                    walk(value)
+
+    for model in (Flat, Nested, KeywordNames):
+        walk(to_strict_schema(model))
