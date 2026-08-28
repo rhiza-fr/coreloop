@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.5] — 2026-08-28
+
+### Fixed
+
+- **`to_strict_schema()` deleted fields named `title` or `default`** — the rewrite
+  recursed over every dict value, so those names were stripped as keywords wherever they
+  appeared, including inside `properties`. The field vanished from `properties` but stayed
+  in `required`, producing a schema no output could satisfy. Recursion now descends into
+  the *values* of name-keyed maps (`properties`, `$defs`, `definitions`,
+  `patternProperties`), so a user's field names are never treated as keywords.
+- **`read` and `edit` no longer block the event loop** — their `open()` calls now run via
+  `asyncio.to_thread`.
+
+### Changed
+
+- Cleared all `ruff check` findings across `src` and `tests`: import sorting,
+  `typing.AsyncIterator` → `collections.abc`, `asyncio.TimeoutError` → `TimeoutError`, and
+  `"k" in d and d["k"]` → `d.get("k")`. The catch-alls in `exec_tool`, `_safe_hook`, the
+  web tools, and `_resolve_safe` are deliberate isolation boundaries and are suppressed
+  with a stated reason rather than rewritten.
+
 ## [0.1.4] — 2026-08-27
 
 ### Added
