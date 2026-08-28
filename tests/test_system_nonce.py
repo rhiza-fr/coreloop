@@ -5,7 +5,8 @@ run so independent requests sharing a system prompt no longer share a prefix --
 defeating Ollama's cross-request prompt-cache reuse.
 """
 
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 import pytest
 

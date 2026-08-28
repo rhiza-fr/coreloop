@@ -11,7 +11,10 @@ _MAX_READ_BYTES = 10 * 1024 * 1024  # 10 MB
 def _resolve_safe(requested: str, root: "Path | str") -> str:
     """Resolve *requested* relative to *root* and raise ValueError on path traversal."""
     if not isinstance(requested, str):
-        raise ValueError(f"path must be a string, got {type(requested).__name__}")
+        # ValueError, not TypeError: callers catch ValueError for every path failure.
+        raise ValueError(  # noqa: TRY004
+            f"path must be a string, got {type(requested).__name__}"
+        )
 
     # Normalize Windows-style separators so traversal is caught on all platforms.
     raw = Path(requested.replace("\\", "/"))

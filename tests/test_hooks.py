@@ -5,9 +5,8 @@ from typing import Any
 import pytest
 
 from coreloop import Agent, AgentHooks, MaxTurnsHook, Message
-from coreloop.types import ToolCall, FunctionCall
 from coreloop.tool_registry import ToolInfo
-
+from coreloop.types import FunctionCall, ToolCall
 
 # -- Helpers --------------------------------------------------------------------
 
@@ -222,7 +221,7 @@ async def test_on_after_agent_not_called_after_abort():
     try:
         async for _ in _agent(hook).run([Message(role="user", content="hi")]):
             pass
-    except Exception:
+    except Exception:  # noqa: BLE001, S110 -- the raising hook's error is not what this asserts
         pass
 
     assert "after_agent" not in hook.calls

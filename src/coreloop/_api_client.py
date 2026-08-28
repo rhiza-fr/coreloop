@@ -17,7 +17,8 @@ arrive at the end.
 import json
 import logging
 import time
-from typing import Any, AsyncIterator, Protocol
+from collections.abc import AsyncIterator
+from typing import Any, Protocol
 
 import httpx
 from pydantic import BaseModel
@@ -172,7 +173,7 @@ class OpenAIBackend:
                 continue
 
             # --- usage (arrives in a separate no-choices chunk after finish_reason) ---
-            if "usage" in chunk and chunk["usage"]:
+            if chunk.get("usage"):
                 u = chunk["usage"]
                 pt = u.get("prompt_tokens", 0)
                 ct = u.get("completion_tokens", 0)
@@ -228,13 +229,13 @@ class OpenAIBackend:
                             "function": {"name": "", "arguments": ""},
                         },
                     )
-                    if "id" in tc_delta and tc_delta["id"]:
+                    if tc_delta.get("id"):
                         partial["id"] = tc_delta["id"]
                     if "function" in tc_delta:
                         fn = tc_delta["function"]
-                        if "name" in fn and fn["name"]:
+                        if fn.get("name"):
                             partial["function"]["name"] += fn["name"]
-                        if "arguments" in fn and fn["arguments"]:
+                        if fn.get("arguments"):
                             partial["function"]["arguments"] += fn["arguments"]
 
             # --- assemble on finish, but keep reading for the usage chunk ---

@@ -3,9 +3,9 @@ from pathlib import Path
 
 from ..tool_registry import ToolInfo
 from .edit import make_edit_tool
+from .grep import make_grep_tool
 from .ls import make_ls_tool
 from .read import make_read_tool
-from .grep import make_grep_tool
 
 
 def make_tools(

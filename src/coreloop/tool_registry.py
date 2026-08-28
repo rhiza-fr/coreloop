@@ -4,8 +4,9 @@ import inspect
 import types
 import typing
 import warnings
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Any, Callable, Coroutine, overload
+from typing import Any, overload
 
 
 @dataclass
@@ -113,7 +114,6 @@ def tool(
     allow_override: bool = False,
 ) -> ToolInfo:
     """Use as @tool directly on a function."""
-    ...
 
 
 @overload
@@ -124,7 +124,6 @@ def tool(
     allow_override: bool = False,
 ) -> Callable[[Callable[..., Coroutine[Any, Any, str]]], ToolInfo]:
     """Use as @tool(...) with keyword arguments."""
-    ...
 
 
 def tool(

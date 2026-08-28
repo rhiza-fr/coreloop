@@ -4,7 +4,7 @@ import asyncio
 from pathlib import Path
 
 from ..tool_registry import ToolInfo
-from ._shared import _resolve_safe_strict, _make_tool_info
+from ._shared import _make_tool_info, _resolve_safe_strict
 
 
 def make_grep_tool(root: str, *, max_chars: int = 20_000, search_timeout: float = 30.0) -> ToolInfo:
@@ -58,7 +58,7 @@ def make_grep_tool(root: str, *, max_chars: int = 20_000, search_timeout: float 
             )
             try:
                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=search_timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 proc.kill()
                 await proc.communicate()
                 return f"Error: grep timed out after {search_timeout} seconds"

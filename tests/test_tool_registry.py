@@ -64,7 +64,7 @@ def test_tool_decorator_duplicate_raises():
 
     with pytest.raises(ValueError, match="already registered"):
         @tool
-        async def dup() -> str:  # noqa: F811
+        async def dup() -> str:
             """Second."""
             return "b"
 

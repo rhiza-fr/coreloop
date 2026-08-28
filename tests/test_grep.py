@@ -106,7 +106,7 @@ async def test_negative_after_context_is_rejected(sandbox):
 async def test_large_output_is_truncated(sandbox):
     """Output exceeding max_chars is truncated with a '...truncated' suffix."""
     tmp_p = Path(sandbox)
-    (tmp_p / "big.txt").write_text(("match\n" * 5000))
+    (tmp_p / "big.txt").write_text("match\n" * 5000)
     grep = make_grep_tool(sandbox, max_chars=200)
     result = await grep.fn(pattern="match")
     assert "truncated" in result
@@ -152,8 +152,9 @@ async def test_rg_nonzero_exit_returns_error(sandbox):
 @pytest.mark.asyncio
 async def test_rg_timeout_returns_error(sandbox):
     """A search that exceeds search_timeout returns a timeout error."""
-    from unittest.mock import MagicMock, patch as _patch
     import asyncio as _asyncio
+    from unittest.mock import MagicMock
+    from unittest.mock import patch as _patch
 
     call_count = 0
 

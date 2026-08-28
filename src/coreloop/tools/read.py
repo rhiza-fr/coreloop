@@ -1,10 +1,11 @@
 """read.py -- line-based file reader with offset/limit pagination."""
 
+import asyncio
 import itertools
 from pathlib import Path
 
 from ..tool_registry import ToolInfo
-from ._shared import _resolve_safe_strict, _fmt_size, _make_tool_info
+from ._shared import _fmt_size, _make_tool_info, _resolve_safe_strict
 
 
 def make_read_tool(
@@ -49,9 +50,12 @@ def make_read_tool(
 
         _stop = _offset + _limit
 
-        try:
+        def _read_slice() -> list[str]:
             with open(safe, encoding="utf-8", errors="replace") as f:
-                lines = list(itertools.islice(f, _offset, _stop + 1))
+                return list(itertools.islice(f, _offset, _stop + 1))
+
+        try:
+            lines = await asyncio.to_thread(_read_slice)
         except OSError as exc:
             return f"Error: cannot read {path!r}: {exc}"
 

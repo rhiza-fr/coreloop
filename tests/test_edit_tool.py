@@ -12,7 +12,6 @@ import pytest
 
 from coreloop.tools import make_tools
 
-
 # -- Fixture ---------------------------------------------------
 
 

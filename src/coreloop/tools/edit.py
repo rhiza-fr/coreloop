@@ -1,5 +1,6 @@
 """edit.py -- atomic string-replace edit tool for text files."""
 
+import asyncio
 import os
 import tempfile
 from pathlib import Path
@@ -67,9 +68,12 @@ def make_edit_tool(root: str, *, max_bytes: int = 10 * 1024 * 1024) -> ToolInfo:
                 f"({_fmt_size(file_size)} > {_fmt_size(max_bytes)})"
             )
 
-        try:
+        def _read_all() -> str:
             with open(safe, encoding="utf-8", errors="strict") as f:
-                content = f.read()
+                return f.read()
+
+        try:
+            content = await asyncio.to_thread(_read_all)
         except UnicodeDecodeError:
             return f"Error: {path!r} contains non-UTF-8 bytes; cannot edit"
         except OSError as exc:

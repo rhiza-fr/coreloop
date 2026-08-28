@@ -1,6 +1,6 @@
 """Message and tool-call type models matching OpenAI's chat format."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
 
@@ -56,7 +56,7 @@ class Message(BaseModel):
     usage: Usage | None = None
     duration: float | None = None
     model: str | None = None
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 def _dump_messages(messages: list[Message]) -> list[dict]:

@@ -139,6 +139,7 @@ async def test_subprocess_os_error_returns_error(sandbox):
 def test_preexec_setpgid_calls_setpgrp_when_available():
     """_preexec_setpgid calls os.setpgrp() when it exists on the platform."""
     from unittest.mock import MagicMock
+
     from coreloop.tools.bash import _preexec_setpgid
 
     mock_setpgrp = MagicMock()
@@ -150,6 +151,7 @@ def test_preexec_setpgid_calls_setpgrp_when_available():
 def test_kill_process_group_windows_calls_proc_kill():
     """On Windows the function falls back to proc.kill() directly."""
     from unittest.mock import MagicMock
+
     from coreloop.tools.bash import _kill_process_group
 
     proc = MagicMock()
@@ -162,6 +164,7 @@ def test_kill_process_group_unix_sends_sigterm():
     """On Unix the function sends SIGTERM to the process group."""
     import signal as _signal
     from unittest.mock import MagicMock
+
     from coreloop.tools.bash import _kill_process_group
 
     proc = MagicMock()
@@ -180,6 +183,7 @@ def test_kill_process_group_unix_sends_sigterm():
 def test_kill_process_group_unix_falls_back_on_os_error():
     """An OSError from os.getpgid causes fallback to proc.kill()."""
     from unittest.mock import MagicMock
+
     from coreloop.tools.bash import _kill_process_group
 
     proc = MagicMock()
@@ -194,8 +198,9 @@ def test_kill_process_group_unix_falls_back_on_os_error():
 
 def test_preexec_setpgid_no_op_when_setpgrp_absent():
     """_preexec_setpgid does nothing when os.setpgrp is absent (Windows)."""
-    from coreloop.tools.bash import _preexec_setpgid
     import os as _os
+
+    from coreloop.tools.bash import _preexec_setpgid
 
     original = getattr(_os, "setpgrp", None)
     try:
@@ -204,4 +209,6 @@ def test_preexec_setpgid_no_op_when_setpgrp_absent():
         _preexec_setpgid()  # must not raise
     finally:
         if original is not None:
-            setattr(_os, "setpgrp", original)
+            # setattr, not assignment: os.setpgrp does not exist on Windows,
+            # so a direct attribute write fails type checking there.
+            setattr(_os, "setpgrp", original)  # noqa: B010

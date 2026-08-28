@@ -9,7 +9,6 @@ import pytest
 from coreloop.tools import make_tools
 from coreloop.tools._shared import _resolve_safe
 
-
 # -- Fixtures --------------------------------------------------
 
 

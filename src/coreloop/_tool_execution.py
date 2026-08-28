@@ -70,11 +70,11 @@ async def run_tool(info: ToolInfo, args: dict[str, Any], timeout: float) -> str:
         async with asyncio.timeout(timeout):
             result = await info.fn(**args)
         return str(result)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error("Tool '%s' timed out after %.1fs", info.name, timeout)
         return f"Error: tool '{info.name}' timed out after {timeout}s"
     except asyncio.CancelledError:
         raise
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- tool failures are reported to the LLM, not raised
         logger.error("Tool '%s' raised %s: %s", info.name, type(exc).__name__, exc)
         return f"Error in tool '{info.name}': {exc}"

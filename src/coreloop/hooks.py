@@ -142,5 +142,5 @@ async def _safe_hook(hooks: AgentHooks, method: str, *args: Any) -> Any:
     """Call a hook method, logging and swallowing any exceptions."""
     try:
         return await getattr(hooks, method)(*args)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- a broken hook must not abort the agent
         logger.warning("Hook %s raised %s: %s", method, type(exc).__name__, exc)

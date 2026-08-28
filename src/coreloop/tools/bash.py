@@ -130,7 +130,7 @@ def make_bash_tool(
             )
             try:
                 stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=_timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 _kill_process_group(proc)
                 await proc.communicate()
                 return (

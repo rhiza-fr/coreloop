@@ -87,7 +87,7 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
                 r = await client.get(f"{base}/search", params=params)
                 r.raise_for_status()
                 data = r.json()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- any search failure becomes a tool error string
             msg = str(exc)
             if "SearXNG URL not configured" in msg:
                 msg += " or set searxng_url in ~/coreloop.toml"
@@ -129,11 +129,10 @@ def make_web_tools(searxng_url: str | None = None) -> list[ToolInfo]:
             ) as client:
                 r = await client.get(url)
                 r.raise_for_status()
-                if cl := r.headers.get("content-length"):
-                    if int(cl) > _MAX_CONTENT_BYTES:
-                        return f"Error: Content too large ({cl} bytes)"
+                if (cl := r.headers.get("content-length")) and int(cl) > _MAX_CONTENT_BYTES:
+                    return f"Error: Content too large ({cl} bytes)"
                 page_html = r.text
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- any fetch failure becomes a tool error string
             return f"Error: {exc}"
 
         if extract_mode == "raw":

@@ -127,9 +127,8 @@ def test_load_merged_named_inherits_default():
 
 def test_load_merged_unknown_raises():
     """Requesting an unknown profile raises KeyError."""
-    with _patch():
-        with pytest.raises(KeyError, match="unknown"):
-            _load_merged_profile("unknown")
+    with _patch(), pytest.raises(KeyError, match="unknown"):
+        _load_merged_profile("unknown")
 
 
 def test_load_merged_global_config_present():

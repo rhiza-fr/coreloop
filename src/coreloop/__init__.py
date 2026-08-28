@@ -3,14 +3,14 @@
 from .agent import Agent
 from .complete import complete
 from .config import AgentConfig
+from .hooks import AgentHooks, MaxTurnsHook
+from .structured import to_strict_schema
+from .tool_registry import ToolInfo, clear_registry, get_tool, list_tools, tool
 from .tools import make_tools
 from .tools.bash import make_bash_tool
 from .tools.grep import make_grep_tool
-from .hooks import AgentHooks, MaxTurnsHook
-from .tool_registry import ToolInfo, clear_registry, get_tool, list_tools, tool
-from .structured import to_strict_schema
-from .web_tools import make_web_tools
 from .types import FunctionCall, Message, ToolCall, Usage
+from .web_tools import make_web_tools
 
 __all__ = [
     "Agent",

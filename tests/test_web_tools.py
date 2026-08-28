@@ -28,9 +28,11 @@ def _mock_client(*, json=None, text=None, headers=None, raise_for_status=None):
 
 
 def test_make_web_tools_raises_import_error_without_html_to_markdown():
-    with patch.dict(sys.modules, {"html_to_markdown": None}):
-        with pytest.raises(ImportError, match="html-to-markdown"):
-            make_web_tools()
+    with (
+        patch.dict(sys.modules, {"html_to_markdown": None}),
+        pytest.raises(ImportError, match="html-to-markdown"),
+    ):
+        make_web_tools()
 
 
 # -- make_web_tools returns two ToolInfo objects --------------------------------

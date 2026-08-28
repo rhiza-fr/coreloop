@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from ..tool_registry import ToolInfo
-from ._shared import _resolve_safe, _resolve_safe_strict, _fmt_size, _make_tool_info
+from ._shared import _fmt_size, _make_tool_info, _resolve_safe, _resolve_safe_strict
 
 
 def make_ls_tool(root: str, *, max_entries: int = 500) -> ToolInfo:
