@@ -32,12 +32,14 @@ def _metadata(html_content: str) -> str:
         meta["title"] = _html.unescape(m.group(1).strip())
     if m := re.search(
         r'<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"\']*)["\']',
-        html_content, re.IGNORECASE,
+        html_content,
+        re.IGNORECASE,
     ):
         meta["description"] = _html.unescape(m.group(1).strip())
     for prop, value in re.findall(
         r'<meta[^>]*property=["\']og:(\w+)["\'][^>]*content=["\']([^"\']*)["\']',
-        html_content, re.IGNORECASE,
+        html_content,
+        re.IGNORECASE,
     ):
         meta[f"og_{prop}"] = _html.unescape(value.strip())
     return "\n".join(f"{k}: {v}" for k, v in meta.items())

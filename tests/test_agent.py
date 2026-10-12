@@ -18,9 +18,13 @@ def _clean_registry():
 
 def _noop_info(name: str) -> ToolInfo:
     """Build a minimal ToolInfo with the given name."""
+
     async def fn() -> str:
         return "ok"
-    return ToolInfo(name=name, description="", parameters={"type": "object", "properties": {}}, fn=fn)
+
+    return ToolInfo(
+        name=name, description="", parameters={"type": "object", "properties": {}}, fn=fn
+    )
 
 
 # -- _resolve_tools ------------------------------------------------------------
@@ -49,6 +53,7 @@ def test_resolve_bash_tool_name():
 
 def test_resolve_global_registered_tool():
     """A globally @tool-registered function is resolved by name."""
+
     @tool
     async def my_custom_tool() -> str:
         """Custom tool."""

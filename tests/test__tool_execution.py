@@ -14,8 +14,10 @@ from coreloop.types import FunctionCall, ToolCall
 def _make_tool(name: str, fn=None, *, required: list[str] | None = None) -> ToolInfo:
     """Build a ToolInfo for testing."""
     if fn is None:
+
         async def fn(**kwargs) -> str:
             return "ok"
+
     props = {p: {"type": "string"} for p in (required or [])}
     schema: dict = {"type": "object", "properties": props}
     if required:
@@ -82,6 +84,7 @@ async def test_run_tool_unknown_arg():
 @pytest.mark.asyncio
 async def test_run_tool_timeout():
     """A tool that exceeds its timeout returns a timeout error."""
+
     async def slow() -> str:
         await asyncio.sleep(10)
         return "never"
@@ -94,6 +97,7 @@ async def test_run_tool_timeout():
 @pytest.mark.asyncio
 async def test_run_tool_exception_is_caught():
     """An exception raised by the tool is caught and returned as an error string."""
+
     async def boom() -> str:
         raise ValueError("kaboom")
 

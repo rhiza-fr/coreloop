@@ -111,5 +111,3 @@ async def test_symlink_entry_shown_with_arrow(sandbox):
         ls = make_ls_tool(sandbox)
         result = await ls.fn(".")
     assert "->" in result
-
-

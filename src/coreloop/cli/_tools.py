@@ -72,8 +72,7 @@ def build_tools(
             web_tools = make_web_tools(searxng_url=searxng_url)
         except ImportError:
             typer.echo(
-                "To use web_search or web_fetch, install web extras: "
-                "pip install coreloop[web]",
+                "To use web_search or web_fetch, install web extras: pip install coreloop[web]",
                 err=True,
             )
             raise typer.Exit(1)

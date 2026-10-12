@@ -347,6 +347,7 @@ def test_cli_does_not_override_profile_reasoning_when_think_unset():
     extra_body = None
     if llm_extra_body_cli_flag:
         import json
+
         extra_body = json.loads(llm_extra_body_cli_flag)
     if think is not None:
         extra_body = (extra_body or {}) | {"reasoning_effort": "medium" if think else "none"}

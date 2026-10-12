@@ -19,12 +19,11 @@ def _clean_registry():
 @pytest.mark.asyncio
 async def test_toolinfo_call_delegates_to_fn():
     """Calling a ToolInfo directly invokes the wrapped function."""
+
     async def fn(x: int) -> str:
         return f"got {x}"
 
-    ti = ToolInfo(
-        name="t", description="", parameters={"type": "object", "properties": {}}, fn=fn
-    )
+    ti = ToolInfo(name="t", description="", parameters={"type": "object", "properties": {}}, fn=fn)
     result = await ti(x=42)
     assert result == "got 42"
 
@@ -34,6 +33,7 @@ async def test_toolinfo_call_delegates_to_fn():
 
 def test_tool_decorator_registers_function():
     """@tool adds the function to the global registry."""
+
     @tool
     async def my_fn() -> str:
         """My function."""
@@ -46,6 +46,7 @@ def test_tool_decorator_registers_function():
 
 def test_tool_decorator_with_custom_name():
     """@tool(name=...) registers under the custom name."""
+
     @tool(name="renamed")
     async def original_name() -> str:
         """A function."""
@@ -57,12 +58,14 @@ def test_tool_decorator_with_custom_name():
 
 def test_tool_decorator_duplicate_raises():
     """Registering the same name twice raises ValueError without allow_override."""
+
     @tool
     async def dup() -> str:
         """First."""
         return "a"
 
     with pytest.raises(ValueError, match="already registered"):
+
         @tool
         async def dup() -> str:
             """Second."""
@@ -71,6 +74,7 @@ def test_tool_decorator_duplicate_raises():
 
 def test_tool_decorator_allow_override():
     """allow_override=True silently replaces the existing registration."""
+
     @tool
     async def overridable() -> str:
         """First."""
@@ -89,6 +93,7 @@ def test_tool_decorator_allow_override():
 
 def test_list_tools_returns_registered():
     """list_tools returns all currently registered tools."""
+
     @tool
     async def aaa() -> str:
         """AAA."""
@@ -106,6 +111,7 @@ def test_list_tools_returns_registered():
 
 def test_clear_registry_removes_all():
     """clear_registry empties the global registry."""
+
     @tool
     async def temp() -> str:
         """Temp."""

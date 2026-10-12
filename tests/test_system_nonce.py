@@ -22,9 +22,7 @@ class _Capture:
         self.seen: list[list[Message]] = []
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        async def fake_stream_chat(
-            *, messages: list[Message], **_: Any
-        ) -> AsyncIterator[Message]:
+        async def fake_stream_chat(*, messages: list[Message], **_: Any) -> AsyncIterator[Message]:
             self.seen.append([m.model_copy() for m in messages])
             yield Message(role="assistant", content="ok", usage=Usage())
 

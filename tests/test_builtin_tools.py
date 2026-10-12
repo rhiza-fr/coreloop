@@ -137,7 +137,11 @@ async def test_path_traversal_rejected(sandbox):
     tools = {t.name: t for t in make_tools(sandbox)}
     read = tools["read"]
 
-    for bad in ("../../../outside/secret.txt", "/outside/secret.txt", "..\\..\\..\\outside\\secret.txt"):
+    for bad in (
+        "../../../outside/secret.txt",
+        "/outside/secret.txt",
+        "..\\..\\..\\outside\\secret.txt",
+    ):
         result = await read.fn(bad)
         assert "path traversal denied" in result, f"Expected denial for {bad!r}"
 

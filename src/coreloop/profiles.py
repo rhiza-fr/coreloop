@@ -57,10 +57,7 @@ _CONFIG_PATH = _find_config_path()
 def _load_config(path: Path | None = None) -> dict[str, Any]:
     p = path or _CONFIG_PATH
     if not p.exists():
-        msg = (
-            f"Config file not found at {p}. "
-            f"Create ~/{_CONFIG_FILENAME} or set CORELOOP_CONFIG."
-        )
+        msg = f"Config file not found at {p}. Create ~/{_CONFIG_FILENAME} or set CORELOOP_CONFIG."
         raise FileNotFoundError(msg)
     return tomllib.loads(p.read_bytes().decode("utf-8"))
 

@@ -112,6 +112,7 @@ async def test_bash_not_found_returns_error(sandbox):
 @pytest.mark.asyncio
 async def test_subprocess_file_not_found_returns_error(sandbox):
     """FileNotFoundError during subprocess spawn is caught and returned as an error."""
+
     async def _raise(*args, **kwargs):
         raise FileNotFoundError("no such file")
 
@@ -124,6 +125,7 @@ async def test_subprocess_file_not_found_returns_error(sandbox):
 @pytest.mark.asyncio
 async def test_subprocess_os_error_returns_error(sandbox):
     """OSError during subprocess spawn is caught and returned as an error."""
+
     async def _raise(*args, **kwargs):
         raise OSError("permission denied")
 

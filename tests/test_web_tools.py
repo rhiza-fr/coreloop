@@ -51,19 +51,31 @@ def test_make_web_tools_returns_two_tools():
 async def test_web_search_returns_no_results():
     client = _mock_client(json={"results": []})
     with patch("coreloop.web_tools.httpx.AsyncClient", return_value=client):
-        tool = next(t for t in make_web_tools(searxng_url="http://localhost:8080") if t.name == "web_search")
+        tool = next(
+            t for t in make_web_tools(searxng_url="http://localhost:8080") if t.name == "web_search"
+        )
         result = await tool.fn(query="test")
     assert result == "No results found."
 
 
 @pytest.mark.asyncio
 async def test_web_search_formats_results():
-    client = _mock_client(json={"results": [{
-        "title": "Example", "url": "https://example.com",
-        "content": "A snippet.", "publishedDate": "2024-01-01",
-    }]})
+    client = _mock_client(
+        json={
+            "results": [
+                {
+                    "title": "Example",
+                    "url": "https://example.com",
+                    "content": "A snippet.",
+                    "publishedDate": "2024-01-01",
+                }
+            ]
+        }
+    )
     with patch("coreloop.web_tools.httpx.AsyncClient", return_value=client):
-        tool = next(t for t in make_web_tools(searxng_url="http://localhost:8080") if t.name == "web_search")
+        tool = next(
+            t for t in make_web_tools(searxng_url="http://localhost:8080") if t.name == "web_search"
+        )
         result = await tool.fn(query="test")
     assert "Example" in result
     assert "https://example.com" in result
@@ -74,7 +86,9 @@ async def test_web_search_formats_results():
 @pytest.mark.asyncio
 async def test_web_search_returns_error_on_exception():
     with patch("coreloop.web_tools.httpx.AsyncClient", side_effect=RuntimeError("network down")):
-        tool = next(t for t in make_web_tools(searxng_url="http://localhost:8080") if t.name == "web_search")
+        tool = next(
+            t for t in make_web_tools(searxng_url="http://localhost:8080") if t.name == "web_search"
+        )
         result = await tool.fn(query="test")
     assert result.startswith("Error:")
     assert "network down" in result

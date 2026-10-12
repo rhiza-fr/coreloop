@@ -9,8 +9,10 @@ from coreloop.tool_registry import ToolInfo
 
 def _make_tool(name: str, description: str = "desc") -> ToolInfo:
     """Build a minimal ToolInfo for testing."""
+
     async def fn() -> str:
         return "ok"
+
     return ToolInfo(
         name=name,
         description=description,
@@ -66,9 +68,7 @@ def test_openai_backend_endpoint():
 def test_openai_backend_endpoint_strips_trailing_slash():
     """Trailing slash on base_url is removed before appending the path."""
     backend = OpenAIBackend()
-    assert backend.endpoint("http://localhost/v1/") == (
-        "http://localhost/v1/chat/completions"
-    )
+    assert backend.endpoint("http://localhost/v1/") == ("http://localhost/v1/chat/completions")
 
 
 def test_openai_backend_headers_no_api_key():
@@ -149,13 +149,22 @@ def _sse_response(*chunks: str) -> httpx.Response:
 def _chunk(content: str, finish: bool = False) -> str:
     """Build a single SSE content-delta chunk."""
     import json
+
     return (
         "data: "
-        + json.dumps({
-            "id": "c1",
-            "object": "chat.completion.chunk",
-            "choices": [{"index": 0, "delta": {"content": content}, "finish_reason": "stop" if finish else None}],
-        })
+        + json.dumps(
+            {
+                "id": "c1",
+                "object": "chat.completion.chunk",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"content": content},
+                        "finish_reason": "stop" if finish else None,
+                    }
+                ],
+            }
+        )
         + "\n\n"
     )
 
@@ -163,13 +172,31 @@ def _chunk(content: str, finish: bool = False) -> str:
 def _tool_chunk(name: str, args: str, call_id: str = "t1") -> str:
     """Build a single SSE tool-call chunk."""
     import json
+
     return (
         "data: "
-        + json.dumps({
-            "id": "c2",
-            "object": "chat.completion.chunk",
-            "choices": [{"index": 0, "delta": {"tool_calls": [{"index": 0, "id": call_id, "type": "function", "function": {"name": name, "arguments": args}}]}, "finish_reason": "tool_calls"}],
-        })
+        + json.dumps(
+            {
+                "id": "c2",
+                "object": "chat.completion.chunk",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {
+                            "tool_calls": [
+                                {
+                                    "index": 0,
+                                    "id": call_id,
+                                    "type": "function",
+                                    "function": {"name": name, "arguments": args},
+                                }
+                            ]
+                        },
+                        "finish_reason": "tool_calls",
+                    }
+                ],
+            }
+        )
         + "\n\n"
     )
 
@@ -222,11 +249,19 @@ async def test_parse_stream_empty_response():
 async def test_parse_stream_ignores_invalid_json():
     """Lines with invalid JSON are silently skipped."""
     import json
+
     bad_line = "data: {not valid json}\n\n"
-    good_line = "data: " + json.dumps({
-        "id": "c1", "object": "chat.completion.chunk",
-        "choices": [{"index": 0, "delta": {"content": "ok"}, "finish_reason": "stop"}],
-    }) + "\n\n"
+    good_line = (
+        "data: "
+        + json.dumps(
+            {
+                "id": "c1",
+                "object": "chat.completion.chunk",
+                "choices": [{"index": 0, "delta": {"content": "ok"}, "finish_reason": "stop"}],
+            }
+        )
+        + "\n\n"
+    )
     resp = _sse_response(bad_line, good_line, _done())
     backend = OpenAIBackend()
     messages = []
@@ -241,10 +276,17 @@ async def test_parse_stream_usage_chunk_captured():
     """A usage chunk (no choices) is captured and attached to the final message."""
     import json
 
-    usage_chunk = "data: " + json.dumps({
-        "id": "c1", "object": "chat.completion.chunk",
-        "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
-    }) + "\n\n"
+    usage_chunk = (
+        "data: "
+        + json.dumps(
+            {
+                "id": "c1",
+                "object": "chat.completion.chunk",
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            }
+        )
+        + "\n\n"
+    )
     resp = _sse_response(_chunk("hi", finish=True), usage_chunk, _done())
     backend = OpenAIBackend()
     messages = []
@@ -260,10 +302,19 @@ async def test_parse_stream_reasoning_delta():
     """Reasoning/thinking content is accumulated in the reasoning field."""
     import json
 
-    reasoning_chunk = "data: " + json.dumps({
-        "id": "c1", "object": "chat.completion.chunk",
-        "choices": [{"index": 0, "delta": {"reasoning_content": "think..."}, "finish_reason": None}],
-    }) + "\n\n"
+    reasoning_chunk = (
+        "data: "
+        + json.dumps(
+            {
+                "id": "c1",
+                "object": "chat.completion.chunk",
+                "choices": [
+                    {"index": 0, "delta": {"reasoning_content": "think..."}, "finish_reason": None}
+                ],
+            }
+        )
+        + "\n\n"
+    )
     resp = _sse_response(reasoning_chunk, _chunk("answer", finish=True), _done())
     backend = OpenAIBackend()
     messages = []
