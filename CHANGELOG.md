@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.6] — 2026-10-12
+
+### Changed
+
+- Refreshed the lock file: `pydantic` 2.14.1, `pydantic-core` 2.50.1, `html-to-markdown`
+  3.17.2, `typer` 0.27.3, `ruff` 0.17.0, plus patch bumps to `anyio`, `coverage`, `idna`,
+  `iniconfig` and `python-dotenv`. Tests, `ruff check` and `ty check` pass unchanged.
+- Reformatted `src` and `tests` with ruff 0.17's formatter (no behaviour change).
+
+### Fixed
+
+- CLI help text referred to the old tool name `ma`; it now says `coreloop`.
+
 ## [0.1.5] — 2026-08-28
 
 ### Fixed
