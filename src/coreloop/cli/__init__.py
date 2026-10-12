@@ -162,10 +162,10 @@ def main(
     Edit it to set your provider credentials and default tools.
 
     [bold]Examples[/bold]
-      ma                                              REPL with default profile (Ollama)
-      ma --profile openai -p "Hello"                  one-shot with a named profile
-      ma -m gpt-4o --tools read,ls,grep --root .      override model and add file tools
-      ma --base-url http://localhost:11434/v1 -m qwen  direct endpoint, no config needed
+      core                                              REPL with default profile (Ollama)
+      core --profile openai -p "Hello"                  one-shot with a named profile
+      core -m gpt-4o --tools read,ls,grep --root .      override model and add file tools
+      core --base-url http://localhost:11434/v1 -m qwen  direct endpoint, no config needed
     """
     if ctx.invoked_subcommand is not None:
         return
@@ -234,7 +234,9 @@ def main(
     built_tools = build_tools(tools_opt, agent_cfg.root, searxng_url, raw)
 
     if max_turns is None:
-        max_turns = int(get_config("ui.ma.max_turns", raw, 20))
+        max_turns = int(
+            get_config("ui.core.max_turns", raw) or get_config("ui.ma.max_turns", raw, 20)
+        )
 
     try:
         agent = Agent.from_config(agent_cfg, hooks=MaxTurnsHook(max_turns), tools=built_tools)
